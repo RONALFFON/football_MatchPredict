@@ -13,14 +13,16 @@ from typing import List, Dict, Any, Optional
 import time
 import random
 
-# 配置日志
+# 配置日志：优先 stdout（Serverless 友好），文件日志用相对路径且写不进时降级（修复硬编码 macOS 路径导致跨平台崩溃）
+_handlers = [logging.StreamHandler()]
+try:
+    _handlers.append(logging.FileHandler('lottery_spider.log', encoding='utf-8'))
+except OSError:
+    pass
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/Users/sco/Desktop/MatchPredict/lottery_spider.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    handlers=_handlers
 )
 
 logger = logging.getLogger(__name__)
