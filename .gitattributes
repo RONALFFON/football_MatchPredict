@@ -1,0 +1,17 @@
+# Keep text files stable across operating systems.
+* text=auto eol=lf
+
+*.py text
+*.js text
+*.json text
+*.html text
+*.css text
+*.md text
+*.csv text
+*.txt text
+*.yml text
+*.yaml text
+
+*.png binary
+*.ico binary
+*.pyc binary
