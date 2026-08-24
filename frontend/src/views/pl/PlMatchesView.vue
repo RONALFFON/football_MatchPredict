@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import * as api from '../../api'
+import type { PlMatch } from '../../api/types'
+import { errorMessage } from '../../shared/error'
 
-const matches = ref<any[]>([])
+const matches = ref<PlMatch[]>([])
 const status = ref('')
 const loading = ref(false)
 const error = ref('')
@@ -13,9 +15,9 @@ async function load() {
   try {
     const data = await api.getPlMatches(status.value || undefined, 100)
     matches.value = data.matches
-  } catch (e: any) {
+  } catch (e: unknown) {
     matches.value = []
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }

@@ -40,6 +40,6 @@ http.interceptors.response.use(
 )
 
 /** 提取契约体的 data 字段 */
-export function unwrap<T = any>(resp: { data: { data: T; message?: string } }): T {
+export function unwrap<T = unknown>(resp: { data: { data: T; message?: string } }): T {
   return resp.data.data
 }

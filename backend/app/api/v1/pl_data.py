@@ -1,4 +1,6 @@
 """英超专项数据 API。"""
+from __future__ import annotations
+
 from fastapi import APIRouter, Query
 
 from app.core.response import fail, ok

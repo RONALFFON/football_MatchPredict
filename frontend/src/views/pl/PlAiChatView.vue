@@ -2,6 +2,7 @@
 import { ref, nextTick } from 'vue'
 import * as api from '../../api'
 import { useAuthStore } from '../../stores/auth'
+import { errorMessage } from '../../shared/error'
 
 const auth = useAuthStore()
 
@@ -79,8 +80,8 @@ async function send(text?: string) {
       }
       scrollToBottom()
     }
-  } catch (e: any) {
-    assistant.text += e.message || '请求失败'
+  } catch (e: unknown) {
+    assistant.text += errorMessage(e)
   } finally {
     assistant.typing = false
     sending.value = false

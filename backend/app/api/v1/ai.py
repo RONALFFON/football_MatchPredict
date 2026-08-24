@@ -8,6 +8,7 @@ from fastapi import APIRouter
 
 from app.core.config import settings
 from app.core.response import fail, ok
+from app.schemas.predict import MatchBatchRequest
 
 router = APIRouter(prefix='/api/v1/ai', tags=['五大联赛-AI预测'])
 logger = logging.getLogger(__name__)
@@ -33,16 +34,13 @@ def _get_predictor():
 
 
 @router.post('/predict')
-def ai_predict(payload: dict):
-    matches = payload.get('matches', [])
-    if not matches:
-        return fail('没有提供比赛数据')
-
+def ai_predict(payload: MatchBatchRequest):
     predictor = _get_predictor()
     if predictor is None:
         return fail('AI服务未配置（缺少 GEMINI_API_KEY）', code=500)
 
     try:
+        matches = [match.model_dump(exclude_none=True) for match in payload.matches]
         results = predictor.analyze_matches(matches)  # ai_service 已返回结构化 dict 列表
         return ok({'predictions': results, 'count': len(results)})
     except Exception as e:  # pragma: no cover

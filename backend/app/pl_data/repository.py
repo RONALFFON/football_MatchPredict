@@ -2,19 +2,19 @@
 
 表不存在时返回统一错误信息（提示先运行同步管道），而不是抛 500。
 """
+from __future__ import annotations
+
 import psycopg2
 import psycopg2.extras
 
-from app.core.deps import prediction_db
+from app.infrastructure.database import database
 
 TABLE_MISSING = '英超数据表尚未初始化，请先执行 backend/sql/pl_analytics_init.sql 并运行同步管道'
 
 
 def _connect():
     """复用主站数据库连接参数（schema 逻辑隔离）。"""
-    if prediction_db is None:
-        raise RuntimeError('数据库未配置')
-    return psycopg2.connect(**prediction_db.connection_params)
+    return psycopg2.connect(**database.connection_params)
 
 
 def query(sql: str, params: tuple = ()) -> list[dict]:

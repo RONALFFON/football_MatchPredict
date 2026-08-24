@@ -1,1 +1,7 @@
+# Local secrets and environment files
+.env
+.env.*
+!.env.example
 config.py
+!backend/app/core/config.py
+config_local.py

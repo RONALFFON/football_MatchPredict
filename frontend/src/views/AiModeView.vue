@@ -1,17 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import * as api from '../api'
-
-interface AiMatch {
-  home_team: string
-  away_team: string
-  league_name: string
-  odds: { hhad: { h: string; d: string; a: string } }
-}
+import type { AiPrediction, MatchInput } from '../api/types'
+import { errorMessage } from '../shared/error'
 
 const form = ref({ home: '', away: '', league: '英超', h: '2.00', d: '3.20', a: '2.80' })
-const queue = ref<AiMatch[]>([])
-const analyses = ref<any[]>([])
+const queue = ref<MatchInput[]>([])
+const analyses = ref<AiPrediction[]>([])
 const loading = ref(false)
 const error = ref('')
 
@@ -42,8 +37,8 @@ async function runAi() {
   try {
     const data = await api.aiPredict(queue.value)
     analyses.value = data.predictions || []
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }

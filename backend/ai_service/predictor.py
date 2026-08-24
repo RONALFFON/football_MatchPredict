@@ -79,10 +79,16 @@ class FootballAiPredictor:
         away_team = match.get('away_team', '')
         league_name = match.get('league_name', '未知联赛')
 
-        hhad = match.get('odds', {}).get('hhad', {})
-        home_odds = float(hhad.get('h', 2.0))
-        draw_odds = float(hhad.get('d', 3.2))
-        away_odds = float(hhad.get('a', 2.8))
+        hhad = (match.get('odds') or {}).get('hhad') or {}
+        home_odds = float(
+            match['home_odds'] if match.get('home_odds') is not None else hhad.get('h', 2.0)
+        )
+        draw_odds = float(
+            match['draw_odds'] if match.get('draw_odds') is not None else hhad.get('d', 3.2)
+        )
+        away_odds = float(
+            match['away_odds'] if match.get('away_odds') is not None else hhad.get('a', 2.8)
+        )
 
         prompt = ANALYSIS_PROMPT_TEMPLATE.format(
             home_team=home_team, away_team=away_team, league_name=league_name,

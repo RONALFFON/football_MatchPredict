@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as api from '../../api'
+import type { PlMatch, Standing } from '../../api/types'
+import { errorMessage } from '../../shared/error'
 
-const upcoming = ref<any[]>([])
-const standings = ref<any[]>([])
+const upcoming = ref<PlMatch[]>([])
+const standings = ref<Standing[]>([])
 const error = ref('')
 
 onMounted(async () => {
@@ -15,8 +17,8 @@ onMounted(async () => {
     if (m.status === 'fulfilled') upcoming.value = m.value.matches
     if (s.status === 'fulfilled') standings.value = s.value.standings
     if (m.status === 'rejected') error.value = (m.reason as Error).message
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   }
 })
 </script>

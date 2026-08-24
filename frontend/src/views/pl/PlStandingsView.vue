@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as api from '../../api'
+import type { Standing } from '../../api/types'
+import { errorMessage } from '../../shared/error'
 
-const standings = ref<any[]>([])
+const standings = ref<Standing[]>([])
 const error = ref('')
 
 onMounted(async () => {
   try {
     const data = await api.getPlStandings()
     standings.value = data.standings
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   }
 })
 

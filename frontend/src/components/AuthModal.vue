@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '../stores/auth'
+import { errorMessage } from '../shared/error'
 
 const auth = useAuthStore()
 const username = ref('')
@@ -22,8 +23,8 @@ async function submit() {
       error.value = ''
       alert('注册成功，请登录')
     }
-  } catch (e: any) {
-    error.value = e.message || '操作失败'
+  } catch (e: unknown) {
+    error.value = errorMessage(e, '操作失败')
   } finally {
     loading.value = false
   }

@@ -2,6 +2,8 @@
 import { ref, onMounted, computed } from 'vue'
 import * as api from '../api'
 import { useAuthStore } from '../stores/auth'
+import type { ClassicPrediction } from '../api/types'
+import { errorMessage } from '../shared/error'
 
 const auth = useAuthStore()
 
@@ -11,7 +13,7 @@ const league = ref('PL')
 const homeTeam = ref('')
 const awayTeam = ref('')
 const odds = ref({ home: 2.0, draw: 3.2, away: 2.8 })
-const result = ref<any>(null)
+const result = ref<ClassicPrediction | null>(null)
 const error = ref('')
 const loading = ref(false)
 
@@ -22,8 +24,8 @@ onMounted(async () => {
     const data = await api.getTeams()
     leagues.value = data.leagues
     teams.value = data.teams
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   }
 })
 
@@ -41,8 +43,8 @@ async function predict() {
       home_odds: odds.value.home, draw_odds: odds.value.draw, away_odds: odds.value.away,
     }])
     result.value = data.individual_predictions[0]
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }
@@ -59,9 +61,10 @@ async function saveResult() {
     })
     await auth.fetchMe()
     alert('预测已保存')
-  } catch (e: any) {
-    alert(e.message)
-    if (/登录/.test(e.message)) auth.openModal('login')
+  } catch (e: unknown) {
+    const message = errorMessage(e)
+    alert(message)
+    if (/登录/.test(message)) auth.openModal('login')
   }
 }
 </script>

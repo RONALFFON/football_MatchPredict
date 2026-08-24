@@ -1,29 +1,19 @@
-"""MatchPredict 统一后端（FastAPI）
-
-- /api/v1/*        五大联赛：球队/体彩赛程/预测/AI/认证
-- /api/v1/pl/*     英超专项：数据查询 + AI Agent 对话
-前端为 frontend/ 下的 Vue3 SPA，纯 JSON 交互，前后端分离。
-"""
-import os
-
-from dotenv import load_dotenv
+"""MatchPredict v3 API。"""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-# 本地开发时加载 backend/.env（生产由平台注入环境变量）
-load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 from app.api.v1 import agent_pl, ai, auth, lottery, pl_data, predict, teams  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.response import ok  # noqa: E402
+from app.infrastructure.database import database  # noqa: E402
 
-app = FastAPI(title='MatchPredict API', version='2.0.0', description='五大联赛 + 英超专项分析统一后端')
+app = FastAPI(title='MatchPredict API', version='3.0.0', description='足球赛事分析 API')
 
-origins = settings.cors_origins.split(',') if settings.cors_origins != '*' else ['*']
+origins = [item.strip() for item in settings.cors_origins.split(',') if item.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,  # JWT 走 Authorization 头，无需 cookie 凭证
+    allow_credentials=False,
     allow_methods=['*'],
     allow_headers=['*'],
 )
@@ -37,9 +27,8 @@ def health():
 @app.get('/api/v1/meta')
 def meta():
     """前端启动自检：服务状态与能力开关（不泄露任何密钥）。"""
-    from app.core.deps import prediction_db
     return ok({
-        'db_ready': prediction_db is not None,
+        'db_ready': database.configured,
         'ai_ready': bool(settings.gemini_api_key),
         'ai_model': settings.gemini_model,
     })

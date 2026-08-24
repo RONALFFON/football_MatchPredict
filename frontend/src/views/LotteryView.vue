@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as api from '../api'
+import type { ClassicPrediction, LotteryMatch } from '../api/types'
+import { errorMessage } from '../shared/error'
 
-const matches = ref<any[]>([])
+const matches = ref<LotteryMatch[]>([])
 const selected = ref<Set<number>>(new Set())
-const results = ref<any[]>([])
+const results = ref<ClassicPrediction[]>([])
 const days = ref(3)
 const loading = ref(false)
 const error = ref('')
@@ -21,9 +23,9 @@ async function load(fromLive = false) {
       : await api.getLotteryMatches(days.value)
     matches.value = data.matches || []
     source.value = fromLive ? '体彩官方 API 实时数据' : (data.source || '数据库')
-  } catch (e: any) {
+  } catch (e: unknown) {
     matches.value = []
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }
@@ -50,8 +52,8 @@ async function batchPredict() {
     }))
     const data = await api.simplePredict(toApi)
     results.value = data.individual_predictions || []
-  } catch (e: any) {
-    error.value = e.message
+  } catch (e: unknown) {
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }
@@ -82,7 +84,7 @@ onMounted(() => load())
   <div v-if="error" class="alert error">{{ error }}</div>
   <div v-if="loading && !matches.length" class="empty">加载中…</div>
   <div v-else-if="!matches.length" class="empty">
-    暂无比赛数据。请先运行同步脚本：<code>python scripts/sync_daily_matches.py --days 7</code>
+    暂无比赛数据。请先运行同步任务：<code>cd backend &amp;&amp; python -m app.workers.sync_lottery --days 7</code>
   </div>
 
   <div v-for="(m, i) in matches" :key="i" class="match-row" @click="toggle(i)"
@@ -91,7 +93,7 @@ onMounted(() => load())
     <div class="match-teams">
       {{ m.home_team }} <span class="vs">vs</span> {{ m.away_team }}
     </div>
-    <div class="match-meta">{{ m.league_name || m.league }} · {{ m.match_time || m.match_date || '' }}</div>
+    <div class="match-meta">{{ m.league_name || '' }} · {{ m.match_time || m.match_date || '' }}</div>
   </div>
 
   <div v-if="results.length" class="card mt-12">

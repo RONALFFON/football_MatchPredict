@@ -7,12 +7,13 @@ import json
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from ai_service import GeminiClient, run_agent
 from app.core.config import settings
-from app.core.deps import get_current_user, get_db
+from app.core.deps import get_current_user, get_users
 from app.core.response import fail
+from app.infrastructure.repositories import UserRepository
 from app.pl_data.provider import RepositoryDataProvider
 
 router = APIRouter(prefix='/api/v1/pl/agent', tags=['英超专项-AI Agent'])
@@ -25,17 +26,16 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    history: list[ChatMessage] = []
+    history: list[ChatMessage] = Field(default_factory=list)
 
 
 @router.post('/chat')
 def pl_agent_chat(payload: ChatRequest,
-                  user=Depends(get_current_user), db=Depends(get_db)):
+                  user=Depends(get_current_user), users: UserRepository = Depends(get_users)):
     """Agent 对话：需登录；免费用户消耗每日配额（与五大联赛预测共用配额池）。"""
     if user is None:
         return fail('请先登录再使用 AI 分析', code=401)
-    if db is not None and not db.can_user_predict(user['id'], user['user_type'],
-                                                  user['daily_predictions_used']):
+    if not users.can_predict(user):
         return fail('今日免费次数已用完，请升级会员', code=403)
 
     history = [{'role': m.role, 'text': m.text} for m in payload.history]
@@ -49,8 +49,8 @@ def pl_agent_chat(payload: ChatRequest,
                 answered = True
             yield f'data: {json.dumps(event, ensure_ascii=False)}\n\n'
         # 有有效回答才扣配额
-        if answered and db is not None:
-            db.increment_user_predictions(user['id'])
+        if answered:
+            users.consume_prediction(user['id'])
         yield 'data: [DONE]\n\n'
 
     return StreamingResponse(event_stream(), media_type='text/event-stream',
