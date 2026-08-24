@@ -19,6 +19,10 @@
 
 v1.0 其余原则（前端零密钥、Agent 经 services 访问数据、护栏、SSE 流式、配额打通）均已按原设计落地。
 
+### v1.2 变更：AI 能力层独立成包（已落地）
+
+`backend/ai_service/` 独立包收纳全部 AI 能力：`llm.py`（Gemini 客户端）、`predictor.py`（五大联赛预测）、`agent/`（编排/工具/护栏）。通过**依赖倒置**解耦：AI 层定义 `PlDataProvider` 接口，app 层以 `app/pl_data/provider.py` 实现并注入；`ai_service` 对 app/scripts/数据库零 import，可独立测试与复用。
+
 
 ---
 

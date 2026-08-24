@@ -1,13 +1,19 @@
-"""英超 Agent 对话 API：SSE 流式。"""
+"""英超 Agent 对话 API：SSE 流式。
+
+AI 实现已抽离至独立能力层 ai_service；本路由负责：
+登录/配额校验 → 组装 LLM 客户端与数据适配器 → 转发事件流。
+"""
 import json
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.agent.orchestrator import run_agent
+from ai_service import GeminiClient, run_agent
+from app.core.config import settings
 from app.core.deps import get_current_user, get_db
 from app.core.response import fail
+from app.pl_data.provider import RepositoryDataProvider
 
 router = APIRouter(prefix='/api/v1/pl/agent', tags=['英超专项-AI Agent'])
 
@@ -33,10 +39,12 @@ def pl_agent_chat(payload: ChatRequest,
         return fail('今日免费次数已用完，请升级会员', code=403)
 
     history = [{'role': m.role, 'text': m.text} for m in payload.history]
+    llm = GeminiClient(settings.gemini_api_key, settings.gemini_model)
+    provider = RepositoryDataProvider()
 
     def event_stream():
         answered = False
-        for event in run_agent(payload.message, history):
+        for event in run_agent(payload.message, history, llm=llm, provider=provider):
             if event['type'] == 'text_delta':
                 answered = True
             yield f'data: {json.dumps(event, ensure_ascii=False)}\n\n'

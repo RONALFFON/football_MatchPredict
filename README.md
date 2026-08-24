@@ -40,9 +40,9 @@ football_MatchPredict/
 ├── frontend/          # 统一前端：Vue 3 + Vite + TypeScript SPA
 │   └── src/           #   五大联赛（经典/彩票/AI 三模式）+ 英超板块（总览/赛程/积分榜/AI对话）
 ├── backend/           # 统一后端：FastAPI（纯 JSON API，JWT 认证）
+│   ├── ai_service/    # ★ 独立 AI 能力层：LLM客户端 / 五大联赛预测 / 英超 Agent（零依赖 app）
 │   ├── app/api/v1/    #   五大联赛路由 + 英超数据路由 + Agent SSE 对话
-│   ├── app/agent/     #   英超 AI Agent：ReAct 编排 + 6 个数据工具（Function Calling）
-│   ├── app/pl_data/   #   英超数据仓储（pl_analytics schema）
+│   ├── app/pl_data/   #   英超数据仓储（pl_analytics schema）+ Provider 适配器
 │   └── sql/           #   pl_analytics 建表脚本
 ├── scripts/           # 数据管道（被 backend 复用）：爬虫/特征工程/同步任务/泊松模型
 ├── data/              # 五大联赛特征与原始数据（CSV/JSON）
