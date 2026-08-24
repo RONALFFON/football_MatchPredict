@@ -31,6 +31,46 @@ MatchPredict 是一个**纯技术研究性质**的足球赛事 AI 分析平台�
 
 ---
 
+## 🏗️ v2.0 前后端分离架构（五大联赛 + 英超专项）
+
+自 v2.0 起，项目重构为规范的前后端分离架构，新增**英超专项分析板块**（含 AI Agent 对话能力）：
+
+```
+football_MatchPredict/
+├── frontend/          # 统一前端：Vue 3 + Vite + TypeScript SPA
+│   └── src/           #   五大联赛（经典/彩票/AI 三模式）+ 英超板块（总览/赛程/积分榜/AI对话）
+├── backend/           # 统一后端：FastAPI（纯 JSON API，JWT 认证）
+│   ├── app/api/v1/    #   五大联赛路由 + 英超数据路由 + Agent SSE 对话
+│   ├── app/agent/     #   英超 AI Agent：ReAct 编排 + 6 个数据工具（Function Calling）
+│   ├── app/pl_data/   #   英超数据仓储（pl_analytics schema）
+│   └── sql/           #   pl_analytics 建表脚本
+├── scripts/           # 数据管道（被 backend 复用）：爬虫/特征工程/同步任务/泊松模型
+├── data/              # 五大联赛特征与原始数据（CSV/JSON）
+├── app.py             # ⚠️ 遗留 Flask 单体（兼容旧部署，新功能请勿在此添加）
+└── templates/, js/    # ⚠️ 遗留服务端渲染页面（由 frontend/ 取代）
+```
+
+### 快速开始（v2.0）
+
+```bash
+# 1. 后端（端口 8000）
+cd backend
+pip install -r requirements.txt
+cp .env.example .env   # 填入 DB / GEMINI_API_KEY / JWT_SECRET
+uvicorn app.main:app --reload --port 8000
+
+# 2. 前端（端口 3000，已配置 /api 代理到 8000）
+cd frontend
+npm install            # 或 pnpm install
+npm run dev
+```
+
+英超板块首次使用需初始化数据表：执行 `backend/sql/pl_analytics_init.sql`。
+
+> 完整设计见 [PREMIER_LEAGUE_DESIGN.md](PREMIER_LEAGUE_DESIGN.md)，实施清单见 [PREMIER_LEAGUE_TODO.md](PREMIER_LEAGUE_TODO.md)。
+
+---
+
 ## ✨ 核心功能
 
 | 功能模块 | 描述 |

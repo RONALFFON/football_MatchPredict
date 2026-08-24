@@ -18,14 +18,16 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.database import prediction_db
 from scripts.china_lottery_spider import ChinaLotterySpider
 
-# 配置日志
+# 配置日志：优先 stdout，文件日志用相对路径且写不进时降级（修复硬编码 macOS 路径导致跨平台崩溃）
+_handlers = [logging.StreamHandler()]
+try:
+    _handlers.append(logging.FileHandler('sync_matches.log', encoding='utf-8'))
+except OSError:
+    pass
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('/Users/sco/Desktop/MatchPredict/sync_matches.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
+    handlers=_handlers
 )
 
 logger = logging.getLogger(__name__)
