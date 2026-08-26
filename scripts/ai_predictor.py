@@ -220,7 +220,11 @@ if __name__ == "__main__":
     if not api_key:
         print("请设置AI_API_KEY环境变量")
         exit(1)
-    predictor = AIFootballPredictor(api_key)
+    predictor = AIFootballPredictor(
+        api_key,
+        model_name=os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite'),
+        base_url=os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1'),
+    )
     
     # 示例比赛数据
     sample_match = {
