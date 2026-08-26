@@ -56,7 +56,7 @@ football_MatchPredict/
 # 1. 后端（端口 8000）
 cd backend
 pip install -r requirements.txt
-cp .env.example .env   # 填入 DB / GEMINI_API_KEY / JWT_SECRET
+cp .env.example .env   # 填入 DB / AI_API_KEY / JWT_SECRET
 uvicorn app.main:app --reload --port 8000
 
 # 2. 前端（端口 3000，已配置 /api 代理到 8000）
@@ -199,8 +199,9 @@ npm run dev
    cp config_example.py config_local.py
    
    # 设置环境变量（推荐方式）
-   export GEMINI_API_KEY="your_api_key_here"
-   export GEMINI_MODEL="gemini-2.0-flash-exp"
+   export AI_API_KEY="your_api_key_here"
+   export AI_MODEL="sensenova-6.7-flash-lite"
+   export AI_BASE_URL="https://token.sensenova.cn/v1"
    
    # 或者编辑config_local.py（已弃用，建议使用环境变量）
    ```

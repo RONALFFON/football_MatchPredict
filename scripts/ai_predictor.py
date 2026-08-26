@@ -30,10 +30,15 @@ class SimpleMatchAnalysis:
     away_odds: float
 
 class AIFootballPredictor:
-    def __init__(self, api_key: str, model_name: str = "gemini-2.0-flash-exp"):
+    def __init__(
+        self,
+        api_key: str,
+        model_name: str = "sensenova-6.7-flash-lite",
+        base_url: str = "https://token.sensenova.cn/v1",
+    ):
         self.api_key = api_key
         self.model_name = model_name
-        self.base_url = "https://generativelanguage.googleapis.com/v1beta/models"
+        self.base_url = base_url.rstrip('/')
         
     def analyze_matches(self, matches: List[Dict[str, Any]]) -> List[SimpleMatchAnalysis]:
         """分析比赛列表，为每场比赛生成独立的AI分析"""
@@ -134,30 +139,19 @@ class AIFootballPredictor:
         )
     
     def _call_ai_model(self, prompt: str) -> Optional[str]:
-        """调用Gemini AI模型"""
-        url = f"{self.base_url}/{self.model_name}:generateContent"
+        """调用 OpenAI 兼容 AI 模型。"""
+        url = f"{self.base_url}/chat/completions"
         
         headers = {
             "Content-Type": "application/json",
-            "x-goog-api-key": self.api_key
+            "Authorization": f"Bearer {self.api_key}"
         }
         
         payload = {
-            "contents": [
-                {
-                    "parts": [
-                        {
-                            "text": prompt
-                        }
-                    ]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.7,
-                "topK": 40,
-                "topP": 0.95,
-                "maxOutputTokens": 1000
-            }
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.7,
+            "max_tokens": 1000,
         }
         
         max_retries = 3
@@ -165,7 +159,7 @@ class AIFootballPredictor:
         
         for attempt in range(max_retries):
             try:
-                logger.info(f"调用Gemini API (尝试 {attempt + 1}/{max_retries})")
+                logger.info(f"调用 AI API (尝试 {attempt + 1}/{max_retries})")
                 
                 response = requests.post(
                     url, 
@@ -178,10 +172,12 @@ class AIFootballPredictor:
                 
                 if response.status_code == 200:
                     data = response.json()
-                    if 'candidates' in data and len(data['candidates']) > 0:
-                        content = data['candidates'][0]['content']['parts'][0]['text']
+                    choices = data.get('choices') or (data.get('data') or {}).get('choices', [])
+                    if choices:
+                        message = choices[0].get('message') or {}
+                        content = message if isinstance(message, str) else message.get('content', '')
                         logger.info("成功获取AI分析")
-                        return content.strip()
+                        return content.strip() if isinstance(content, str) else None
                     else:
                         logger.warning("API响应中没有找到有效内容")
                         return None
@@ -220,9 +216,9 @@ class AIFootballPredictor:
 if __name__ == "__main__":
     # 初始化预测器
     import os
-    api_key = os.environ.get('GEMINI_API_KEY')
+    api_key = os.environ.get('AI_API_KEY')
     if not api_key:
-        print("请设置GEMINI_API_KEY环境变量")
+        print("请设置AI_API_KEY环境变量")
         exit(1)
     predictor = AIFootballPredictor(api_key)
     
@@ -243,4 +239,4 @@ if __name__ == "__main__":
     for analysis in analysis:
         print(f"比赛: {analysis.home_team} vs {analysis.away_team}")
         print(f"AI分析: {analysis.ai_analysis}")
-        print(f"赔率: 主胜 {analysis.home_odds}, 平局 {analysis.draw_odds}, 客胜 {analysis.away_odds}") 
+        print(f"赔率: 主胜 {analysis.home_odds}, 平局 {analysis.draw_odds}, 客胜 {analysis.away_odds}")

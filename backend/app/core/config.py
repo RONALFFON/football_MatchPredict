@@ -15,8 +15,9 @@ class Settings(BaseSettings):
     db_pass: str = ''
     db_sslmode: str = 'prefer'
 
-    gemini_api_key: str = ''
-    gemini_model: str = 'gemini-2.0-flash-exp'
+    ai_api_key: str = ''
+    ai_model: str = 'sensenova-6.7-flash-lite'
+    ai_base_url: str = 'https://token.sensenova.cn/v1'
 
     jwt_secret: str = ''
     jwt_algorithm: str = 'HS256'

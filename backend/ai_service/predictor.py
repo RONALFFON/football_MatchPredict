@@ -1,7 +1,7 @@
 """五大联赛 AI 比赛预测：Prompt 构建 + 限流重试。
 
 取代遗留 scripts/ai_predictor.py（其实现迁入本 AI 能力层，解除对旧脚本的依赖）。
-app 层仅需使用 FootballAiPredictor，不接触任何 Gemini 协议细节。
+app 层仅需使用 FootballAiPredictor，不接触任何具体厂商协议细节。
 """
 import logging
 import random
@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from ai_service.llm import GeminiClient, extract_text
+from ai_service.llm import OpenAICompatibleClient, extract_text
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ class FootballAiPredictor:
 
     MAX_RETRIES = 3
 
-    def __init__(self, llm: GeminiClient):
+    def __init__(self, llm: OpenAICompatibleClient):
         self.llm = llm
 
     def analyze_matches(self, matches: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -119,19 +119,19 @@ class FootballAiPredictor:
 
     def _call_with_retry(self, prompt: str) -> Optional[str]:
         """429 限流指数退避重试；其他错误线性退避。"""
-        contents = [{'role': 'user', 'parts': [{'text': prompt}]}]
+        messages = [{'role': 'user', 'content': prompt}]
         for attempt in range(self.MAX_RETRIES):
             try:
-                data = self.llm.generate(contents, temperature=0.7, max_tokens=1000)
+                data = self.llm.generate(messages, temperature=0.7, max_tokens=1000)
                 return extract_text(data).strip() or None
             except requests.HTTPError as e:
                 status = e.response.status_code if e.response is not None else None
                 if status == 429 and attempt < self.MAX_RETRIES - 1:
                     delay = (2 ** attempt) + random.uniform(0, 1)
-                    logger.warning(f'Gemini 限流，{delay:.1f}s 后重试')
+                    logger.warning(f'AI API 限流，{delay:.1f}s 后重试')
                     time.sleep(delay)
                     continue
-                logger.error(f'Gemini 调用失败: {status}')
+                logger.error(f'AI API 调用失败: {status}')
                 if attempt < self.MAX_RETRIES - 1:
                     time.sleep(attempt + 1)
             except requests.exceptions.Timeout:

@@ -357,12 +357,12 @@ class AIPredictionManager {
                 aiPredictBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> AI分析中...';
             }
 
-            // 直接调用Gemini API进行预测
+            // 直接调用通用 AI API 进行预测
             const predictions = [];
             for (const match of matchesToPredict) {
                 try {
                     console.log(`开始预测比赛: ${match.home_team} vs ${match.away_team}`);
-                    const prediction = await this.predictMatchWithGemini(match);
+                    const prediction = await this.predictMatchWithAI(match);
                     if (prediction) {
                         predictions.push(prediction);
                         console.log(`比赛预测成功: ${match.home_team} vs ${match.away_team}`);
@@ -594,56 +594,49 @@ class AIPredictionManager {
         }, 3000);
     }
 
-    // 直接调用Gemini API预测单场比赛
-    async predictMatchWithGemini(match) {
+    // 直接调用通用 AI API 预测单场比赛
+    async predictMatchWithAI(match) {
         // 从环境变量或配置中获取API密钥
-        const GEMINI_API_KEY = this.getGeminiApiKey();
-        if (!GEMINI_API_KEY) {
-            throw new Error('未找到GEMINI_API_KEY。请确保在Vercel中配置了环境变量，或在控制台中设置: localStorage.setItem("GEMINI_API_KEY", "your_api_key_here")');
+        const AI_API_KEY = this.getAIKey();
+        if (!AI_API_KEY) {
+            throw new Error('未找到AI_API_KEY。请先在环境变量或控制台中配置 AI API Key');
         }
 
-        const GEMINI_MODEL = window.GEMINI_MODEL || 'gemini-2.5-flash-lite-preview-06-17';
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+        const AI_MODEL = window.AI_MODEL || 'sensenova-6.7-flash-lite';
+        const AI_BASE_URL = window.AI_BASE_URL || 'https://token.sensenova.cn/v1';
+        const API_URL = `${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
 
         // 构建详细的提示词
         const prompt = this.buildPrompt(match);
 
         const requestBody = {
-            contents: [
-                {
-                    parts: [
-                        {
-                            text: prompt
-                        }
-                    ]
-                }
-            ],
-            generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 2000
-            }
+            model: AI_MODEL,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 2000
         };
 
         try {
-            const response = await fetch(`${API_URL}?key=${GEMINI_API_KEY}`, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${AI_API_KEY}`,
                 },
                 body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
                 const errorText = await response.text();
-                throw new Error(`Gemini API调用失败: ${response.status} - ${errorText}`);
+                throw new Error(`AI API 调用失败: ${response.status} - ${errorText}`);
             }
 
             const data = await response.json();
             
-            if (data.candidates && data.candidates.length > 0) {
-                const aiAnalysis = data.candidates[0].content.parts[0].text;
+            const choices = data.choices || (data.data && data.data.choices) || [];
+            if (choices.length > 0 && choices[0].message) {
+                const message = choices[0].message;
+                const aiAnalysis = typeof message === 'string' ? message : message.content;
                 
                 return {
                     match_id: match.match_id || `match_${Date.now()}`,
@@ -658,11 +651,11 @@ class AIPredictionManager {
                     }
                 };
             } else {
-                throw new Error('Gemini API返回数据格式错误');
+                throw new Error('AI API 返回数据格式错误');
             }
 
         } catch (error) {
-            console.error('Gemini API调用失败:', error);
+            console.error('AI API 调用失败:', error);
             throw error;
         }
     }
@@ -723,37 +716,34 @@ class AIPredictionManager {
 请用中文回答，保持专业分析水准。`;
     }
 
-    // 获取Gemini API密钥
-    getGeminiApiKey() {
+    // 获取通用 AI API 密钥
+    getAIKey() {
         // 首先尝试从环境变量获取 (Vercel配置)
-        if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-            return process.env.GEMINI_API_KEY;
+        if (typeof process !== 'undefined' && process.env && process.env.AI_API_KEY) {
+            return process.env.AI_API_KEY;
         }
         
         // 然后尝试从全局变量获取 (环境变量注入)
-        if (window.GEMINI_API_KEY) {
-            return window.GEMINI_API_KEY;
+        if (window.AI_API_KEY) {
+            return window.AI_API_KEY;
         }
         
         // 最后尝试从localStorage获取 (用户手动设置)
-        const localKey = localStorage.getItem('GEMINI_API_KEY');
+        const localKey = localStorage.getItem('AI_API_KEY');
         if (localKey) {
             return localKey;
         }
         
         // 如果都没有，提示用户设置
-        console.warn('未找到GEMINI_API_KEY，请通过以下方式之一配置：');
-        console.warn('1. 在Vercel中配置环境变量 GEMINI_API_KEY');
-        console.warn('2. 在控制台中设置: localStorage.setItem("GEMINI_API_KEY", "your_api_key_here")');
-        console.warn('3. 定义全局变量: window.GEMINI_API_KEY = "your_api_key_here"');
+        console.warn('未找到AI_API_KEY，请通过环境变量或控制台配置 AI API Key');
         
         return null;
     }
 
     // 设置API密钥的便捷方法
-    setGeminiApiKey(apiKey) {
-        localStorage.setItem('GEMINI_API_KEY', apiKey);
-        console.log('GEMINI_API_KEY已保存到localStorage');
+    setAIKey(apiKey) {
+        localStorage.setItem('AI_API_KEY', apiKey);
+        console.log('AI_API_KEY已保存到localStorage');
     }
 
     // 更新AI购物车显示
@@ -926,4 +916,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // 导出给其他模块使用
-window.AIPredictionManager = AIPredictionManager; 
+window.AIPredictionManager = AIPredictionManager;

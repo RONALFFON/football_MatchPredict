@@ -562,7 +562,7 @@ class LotteryManager {
             });
             });
 
-            // 直接调用Gemini API进行预测
+            // 直接调用通用 AI API 进行预测
             const predictions = [];
             for (const match of aiMatches) {
                 try {
@@ -570,7 +570,7 @@ class LotteryManager {
                     
                     // 使用AI预测管理器的方法
                     if (window.aiPredictionManager) {
-                        const prediction = await window.aiPredictionManager.predictMatchWithGemini(match);
+                        const prediction = await window.aiPredictionManager.predictMatchWithAI(match);
                         if (prediction) {
                             predictions.push(prediction);
                             console.log(`彩票比赛预测成功: ${match.home_team} vs ${match.away_team}`);
@@ -898,7 +898,7 @@ class LotteryManager {
             const prompt = this.buildParlayPrompt(selectedMatchesArray);
             
             // 调用AI分析
-            const aiResponse = await this.callGeminiForParlay(prompt);
+            const aiResponse = await this.callAIForParlay(prompt);
             
             // 显示推荐结果
             this.displayParlayRecommendation(aiResponse, selectedMatchesArray);
@@ -948,31 +948,28 @@ class LotteryManager {
         return prompt;
     }
 
-    async callGeminiForParlay(prompt) {
+    async callAIForParlay(prompt) {
         // 获取API密钥
-        const apiKey = window.GEMINI_API_KEY || localStorage.getItem('GEMINI_API_KEY');
+        const apiKey = window.AI_API_KEY || localStorage.getItem('AI_API_KEY');
         if (!apiKey) {
-            throw new Error('未配置Gemini API密钥');
+            throw new Error('未配置 AI API 密钥');
         }
 
-        const model = window.GEMINI_MODEL || 'gemini-2.5-flash-lite-preview-06-17';
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const model = window.AI_MODEL || 'sensenova-6.7-flash-lite';
+        const baseUrl = window.AI_BASE_URL || 'https://token.sensenova.cn/v1';
+        const apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
 
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                    maxOutputTokens: 1024
-                }
+                model,
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7,
+                max_tokens: 1024,
             })
         });
 
@@ -981,11 +978,13 @@ class LotteryManager {
         }
 
         const data = await response.json();
-        if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        const choices = data.choices || (data.data && data.data.choices) || [];
+        if (!choices[0] || !choices[0].message) {
             throw new Error('AI响应格式异常');
         }
 
-        return data.candidates[0].content.parts[0].text;
+        const message = choices[0].message;
+        return typeof message === 'string' ? message : message.content;
     }
 
     displayParlayRecommendation(aiResponse, matches) {
@@ -1043,4 +1042,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // 导出给其他模块使用
-window.LotteryManager = LotteryManager; 
+window.LotteryManager = LotteryManager;

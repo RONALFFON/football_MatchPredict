@@ -1,4 +1,4 @@
-"""AI 智能预测：服务端代理 Gemini，密钥绝不暴露给前端。
+"""AI 智能预测：服务端代理模型服务，密钥绝不暴露给前端。
 
 实现已抽离至独立 AI 能力层 ai_service（本路由只做参数校验与结果透出）。
 """
@@ -21,11 +21,15 @@ def _get_predictor():
     global _predictor
     if _predictor is not None:
         return _predictor
-    if not settings.gemini_api_key:
+    if not settings.ai_api_key:
         return None
     try:
-        from ai_service import FootballAiPredictor, GeminiClient
-        llm = GeminiClient(settings.gemini_api_key, settings.gemini_model)
+        from ai_service import FootballAiPredictor, OpenAICompatibleClient
+        llm = OpenAICompatibleClient(
+            settings.ai_api_key,
+            settings.ai_model,
+            settings.ai_base_url,
+        )
         _predictor = FootballAiPredictor(llm)
         return _predictor
     except Exception as e:  # pragma: no cover
@@ -37,7 +41,7 @@ def _get_predictor():
 def ai_predict(payload: MatchBatchRequest):
     predictor = _get_predictor()
     if predictor is None:
-        return fail('AI服务未配置（缺少 GEMINI_API_KEY）', code=500)
+        return fail('AI服务未配置（缺少 AI_API_KEY）', code=500)
 
     try:
         matches = [match.model_dump(exclude_none=True) for match in payload.matches]

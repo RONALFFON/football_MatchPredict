@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from ai_service import GeminiClient, run_agent
+from ai_service import OpenAICompatibleClient, run_agent
 from app.core.config import settings
 from app.core.deps import get_current_user, get_users
 from app.core.response import fail
@@ -39,7 +39,11 @@ def pl_agent_chat(payload: ChatRequest,
         return fail('今日免费次数已用完，请升级会员', code=403)
 
     history = [{'role': m.role, 'text': m.text} for m in payload.history]
-    llm = GeminiClient(settings.gemini_api_key, settings.gemini_model)
+    llm = OpenAICompatibleClient(
+        settings.ai_api_key,
+        settings.ai_model,
+        settings.ai_base_url,
+    )
     provider = RepositoryDataProvider()
 
     def event_stream():

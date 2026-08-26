@@ -16,6 +16,7 @@
     }
   ],
   "env": {
-    "GEMINI_MODEL": "gemini-2.0-flash-exp"
+    "AI_MODEL": "sensenova-6.7-flash-lite",
+    "AI_BASE_URL": "https://token.sensenova.cn/v1"
   }
-} 
+}

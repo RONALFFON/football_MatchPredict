@@ -1,4 +1,4 @@
-"""Agent 工具注册表：Gemini function 声明 + 本地执行。
+"""Agent 工具注册表：OpenAI 兼容 function 声明 + 本地执行。
 
 架构约束：
 1. 数据访问全部经由注入的 PlDataProvider，本模块零 SQL、零仓储依赖。
@@ -9,7 +9,7 @@ from typing import Any, Dict, List
 
 from ai_service.agent.interfaces import PlDataProvider
 
-# ---------- Gemini function 声明（静态） ----------
+# ---------- 内部工具声明（转换为 OpenAI 兼容格式后发送） ----------
 
 TOOL_DECLARATIONS: List[Dict[str, Any]] = [
     {
@@ -85,7 +85,30 @@ class ToolRegistry:
 
     @property
     def declarations(self) -> List[Dict[str, Any]]:
-        return TOOL_DECLARATIONS
+        return [
+            {
+                'type': 'function',
+                'function': {
+                    'name': item['name'],
+                    'description': item.get('description', ''),
+                    'parameters': self._normalize_schema(item.get('parameters', {})),
+                },
+            }
+            for item in TOOL_DECLARATIONS
+        ]
+
+    @staticmethod
+    def _normalize_schema(value: Any) -> Any:
+        """将旧声明中的大写 JSON Schema 类型转为标准小写格式。"""
+        if isinstance(value, dict):
+            return {
+                key: item.lower() if key == 'type' and isinstance(item, str)
+                else ToolRegistry._normalize_schema(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [ToolRegistry._normalize_schema(item) for item in value]
+        return value
 
     def execute(self, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
         try:

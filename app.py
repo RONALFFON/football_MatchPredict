@@ -5,6 +5,15 @@ import logging
 import requests
 import hashlib
 import psycopg2
+
+# 统一读取项目环境变量：新版后端使用 backend/.env，旧版 Flask 也复用同一份配置。
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    load_dotenv(os.path.join(os.path.dirname(__file__), 'backend', '.env'))
+except ImportError:
+    pass
 from datetime import datetime, timedelta
 
 # 尝试导入数据库模块
@@ -87,16 +96,18 @@ def initialize_services():
     try:
         # 初始化AI预测器
         if AIFootballPredictor:
-            gemini_api_key = os.environ.get('GEMINI_API_KEY')
-            gemini_model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite-preview-06-17')
+            ai_api_key = os.environ.get('AI_API_KEY')
+            ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
+            ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
             
-            if not gemini_api_key:
-                app.logger.warning("GEMINI_API_KEY环境变量未设置，AI预测器将不可用")
+            if not ai_api_key:
+                app.logger.warning("AI_API_KEY环境变量未设置，AI预测器将不可用")
                 ai_predictor = None
             else:
                 ai_predictor = AIFootballPredictor(
-                    api_key=gemini_api_key,
-                    model_name=gemini_model
+                    api_key=ai_api_key,
+                    model_name=ai_model,
+                    base_url=ai_base_url,
                 )
                 app.logger.info("AI预测器初始化成功")
         else:
@@ -157,15 +168,17 @@ def session_debug():
 def index():
     try:
         # 将环境变量传递给前端
-        gemini_api_key = os.environ.get('GEMINI_API_KEY', '')
-        gemini_model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite-preview-06-17')
+        ai_api_key = os.environ.get('AI_API_KEY', '')
+        ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
+        ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
         
         # 获取当前用户信息
         current_user = get_current_user()
         
         return render_template('index.html', 
-                             gemini_api_key=gemini_api_key,
-                             gemini_model=gemini_model,
+                             ai_api_key=ai_api_key,
+                             ai_model=ai_model,
+                             ai_base_url=ai_base_url,
                              current_user=current_user)
     except Exception as e:
         app.logger.error(f"渲染主页失败: {e}")
@@ -425,18 +438,20 @@ def ai_predict():
         current_predictor = ai_predictor
         if not current_predictor:
             try:
-                gemini_api_key = os.environ.get('GEMINI_API_KEY')
-                gemini_model = os.environ.get('GEMINI_MODEL', 'gemini-2.5-flash-lite-preview-06-17')
+                ai_api_key = os.environ.get('AI_API_KEY')
+                ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
+                ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
                 
-                if not gemini_api_key:
+                if not ai_api_key:
                     return jsonify({
                         'success': False,
-                        'error': 'GEMINI_API_KEY环境变量未设置'
+                        'error': 'AI_API_KEY环境变量未设置'
                     }), 500
                     
                 current_predictor = AIFootballPredictor(
-                    api_key=gemini_api_key,
-                    model_name=gemini_model
+                    api_key=ai_api_key,
+                    model_name=ai_model,
+                    base_url=ai_base_url,
                 )
                 app.logger.info("临时创建AI预测器")
             except Exception as e:
@@ -879,4 +894,4 @@ def can_user_predict_api():
         return jsonify({'success': False, 'message': '检查失败'}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8000) 
+    app.run(debug=True, host='0.0.0.0', port=8000)

@@ -10,7 +10,7 @@
 
 ### 2. 最佳串关AI推荐
 - **自动显示**: 选择2+场比赛时自动显示推荐区域
-- **AI分析**: 使用Gemini大模型生成专业串关建议
+- **AI分析**: 使用商汤日日新大模型生成专业串关建议
 - **美观界面**: 蓝色渐变背景，突出显示重要信息
 - **统计数据**: 显示比赛数量和预估赔率
 
@@ -112,8 +112,8 @@ async generateBestParlay() {
     // 构建专业提示词
     const prompt = this.buildParlayPrompt(selectedMatches);
     
-    // 调用Gemini API
-    const aiResponse = await this.callGeminiForParlay(prompt);
+    // 调用通用 AI API
+    const aiResponse = await this.callAIForParlay(prompt);
     
     // 显示格式化结果
     this.displayParlayRecommendation(aiResponse, matches);

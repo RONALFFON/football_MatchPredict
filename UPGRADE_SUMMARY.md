@@ -55,13 +55,14 @@
 
 ### 环境变量配置
 在Vercel中设置以下环境变量：
-- `GEMINI_API_KEY`: 你的Gemini API密钥
-- `GEMINI_MODEL`: 模型名称（默认: gemini-2.0-flash-exp）
+- `AI_API_KEY`: 当前 AI 厂商的 API Key
+- `AI_MODEL`: 模型名称（默认: sensenova-6.7-flash-lite）
+- `AI_BASE_URL`: OpenAI 兼容接口地址（默认: https://token.sensenova.cn/v1）
 
 ### 功能说明
 - **经典模式**: 完全本地化，不需要API密钥
 - **彩票模式**: 爬取公开数据，不需要API密钥  
-- **AI模式**: 需要GEMINI_API_KEY，如未设置将显示错误提示
+- **AI模式**: 需要 `AI_API_KEY`，如未设置将显示错误提示
 
 ## 🎨 UI/UX 改进
 

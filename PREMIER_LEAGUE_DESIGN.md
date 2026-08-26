@@ -21,7 +21,7 @@ v1.0 其余原则（前端零密钥、Agent 经 services 访问数据、护栏�
 
 ### v1.2 变更：AI 能力层独立成包（已落地）
 
-`backend/ai_service/` 独立包收纳全部 AI 能力：`llm.py`（Gemini 客户端）、`predictor.py`（五大联赛预测）、`agent/`（编排/工具/护栏）。通过**依赖倒置**解耦：AI 层定义 `PlDataProvider` 接口，app 层以 `app/pl_data/provider.py` 实现并注入；`ai_service` 对 app/scripts/数据库零 import，可独立测试与复用。
+`backend/ai_service/` 独立包收纳全部 AI 能力：`llm.py`（SenseNova 客户端）、`predictor.py`（五大联赛预测）、`agent/`（编排/工具/护栏）。通过**依赖倒置**解耦：AI 层定义 `PlDataProvider` 接口，app 层以 `app/pl_data/provider.py` 实现并注入；`ai_service` 对 app/scripts/数据库零 import，可独立测试与复用。
 
 
 ---
@@ -36,7 +36,7 @@ v1.0 其余原则（前端零密钥、Agent 经 services 访问数据、护栏�
 |------|------|------|
 | 后端单文件巨石 | `app.py` 882 行，路由/认证/业务/编排混杂 | 任何新功能都要改这一个文件，回归风险高 |
 | 前后端半耦合 | `templates/index.html` 由 Flask 服务端渲染 + 9 个原生 JS 文件全局变量互通 | 无法独立开发、独立部署、独立测试 |
-| 数据脚本耦合 | 五大联赛特征数据、体彩爬虫、Gemini 调用混在同一 `scripts/` 目录 | 英超专项深化（xG、阵容、伤病、实时比分）无处安放 |
+| 数据脚本耦合 | 五大联赛特征数据、体彩爬虫、SenseNova 调用混在同一 `scripts/` 目录 | 英超专项深化（xG、阵容、伤病、实时比分）无处安放 |
 | 无扩展性 | 新增"某联赛专项分析"只能继续往主站堆功能 | 耦合持续恶化，最终不可维护 |
 
 ### 1.2 需求目标
@@ -44,7 +44,7 @@ v1.0 其余原则（前端零密钥、Agent 经 services 访问数据、护栏�
 1. 新增一个**英超专项数据分析窗口/应用**：赛程、积分榜、球队画像、赔率走势、深度数据面板。
 2. 内置 **AI / Agent 能力**：用户可对话式提问（"阿森纳最近 5 场防守如何？"），Agent 自主调用数据工具回答。
 3. **架构分离**：前后端分离、新应用与主站解耦，防止互相拖累。
-4. 可复用主站已有资产：用户体系、数据管道经验、Gemini 接入。
+4. 可复用主站已有资产：用户体系、数据管道经验、SenseNova 接入。
 
 ---
 
@@ -120,7 +120,7 @@ football_MatchPredict/                  # 主站（保持不动，只加一个�
                                              │              │
                         ┌────────────────────┼──────────────┼──────┐
                         │                    ▼              ▼      │
-                        │   Gemini API   PostgreSQL(schema: pl_*)  │
+                        │ SenseNova API   PostgreSQL(schema: pl_*) │
                         │   (LLM推理)    + Redis(缓存/会话)         │
                         └──────────────────────────────────────────┘
                                              ▲
@@ -156,7 +156,7 @@ football_MatchPredict/                  # 主站（保持不动，只加一个�
 
 | 候选 | 优势 | 劣势 | 结论 |
 |------|------|------|------|
-| **自研轻量 ReAct 循环 + Gemini Function Calling** | 依赖少、可控、贴合 Vercel 部署、便于定制护栏 | 需自己写编排 | ✅ **选定** |
+| **自研轻量 ReAct 循环 + SenseNova 工具调用** | 依赖少、可控、贴合 Vercel 部署、便于定制护栏 | 需自己写编排 | ✅ **选定** |
 | LangChain/LangGraph | 开箱即用 | 依赖重、抽象层多、Serverless 冷启动慢 | ❌ 否决 |
 | 纯 Prompt 一问一答（主站现状） | 最简单 | 无法查实时数据、易幻觉 | ❌ 否决：不满足"数据分析"需求 |
 
@@ -184,7 +184,7 @@ football_MatchPredict/                  # 主站（保持不动，只加一个�
 | `/ai` | **AI 分析对话窗** | Chat UI，流式输出（SSE），展示 Agent 工具调用过程 |
 
 关键工程约束：
-- 前端**不内置任何 API Key**（吸取主站 `gemini_api_key` 透传到模板的教训），所有 AI 调用走后端代理。
+- 前端**不内置任何 API Key**（所有 AI 调用走后端代理）。
 - 环境变量只允许 `VITE_API_BASE_URL` 一项。
 
 ### 4.2 后端（backend/）
@@ -225,7 +225,7 @@ REST API 设计（v1）：
 用户提问
    │
    ▼
-Orchestrator ──► Gemini Function Calling
+Orchestrator ──► SenseNova Tool Calling
    │                  │ 返回 tool_call
    │            ┌─────┴──────────────────────────────┐
    │            ▼          ▼          ▼               ▼
@@ -305,7 +305,7 @@ Orchestrator ──► Gemini Function Calling
 | 定时同步 | GitHub Actions cron | 免服务器；失败发 Issue/邮件告警 |
 | 数据库 | 复用现有托管 PostgreSQL，独立 schema | 零新增成本 |
 
-环境变量清单（新应用）：`DB_HOST/PORT/NAME/USER/PASS`（建议换用 Secret 管理，禁止硬编码）、`GEMINI_API_KEY`、`GEMINI_MODEL`、`JWT_SECRET`、`FOOTBALL_DATA_API_KEY`、`CORS_ORIGINS`。
+环境变量清单（新应用）：`DB_HOST/PORT/NAME/USER/PASS`（建议换用 Secret 管理，禁止硬编码）、`AI_API_KEY`、`AI_MODEL`、`AI_BASE_URL`、`JWT_SECRET`、`FOOTBALL_DATA_API_KEY`、`CORS_ORIGINS`。
 
 CI/CD：GitHub Actions —— PR 触发 lint+pytest；main 分支推送触发前端构建 + 后端部署。
 

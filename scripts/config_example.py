@@ -1,10 +1,11 @@
 # 配置文件示例
 # 请复制此文件为 config_local.py 并填入您的实际配置
 
-# Gemini API配置  
-# 请设置环境变量: export GEMINI_API_KEY="your_api_key_here"
-GEMINI_API_KEY = ""  # 已移动到环境变量
-GEMINI_MODEL = "gemini-2.5-flash-preview-05-20"
+# 通用 AI API 配置（当前默认：商汤日日新 SenseNova）
+# 请设置环境变量: export AI_API_KEY="your_api_key_here"
+AI_API_KEY = ""  # 已移动到环境变量
+AI_MODEL = "sensenova-6.7-flash-lite"
+AI_BASE_URL = "https://token.sensenova.cn/v1"
 
 # Flask配置
 DEBUG = True
@@ -91,4 +92,4 @@ BET_TYPES = {
         "description": "半场/全场结果组合",
         "enabled": True
     }
-} 
+}
