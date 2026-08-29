@@ -15,9 +15,10 @@ class Settings(BaseSettings):
     db_pass: str = ''
     db_sslmode: str = 'prefer'
 
+    ai_mode: str = ''
     ai_api_key: str = ''
-    ai_model: str = 'sensenova-6.7-flash-lite'
-    ai_base_url: str = 'https://token.sensenova.cn/v1'
+    ai_model: str = ''
+    ai_base_url: str = ''
 
     jwt_secret: str = ''
     jwt_algorithm: str = 'HS256'
@@ -30,6 +31,24 @@ class Settings(BaseSettings):
         env_file_encoding='utf-8',
         extra='ignore',
     )
+
+    @property
+    def ai_is_local(self) -> bool:
+        return self.ai_mode.strip().lower() in {'local', 'local_url'}
+
+    @property
+    def ai_ready(self) -> bool:
+        return (
+            self.ai_mode.strip().lower() in {'api_key', 'local', 'local_url'}
+            and bool(self.ai_client_base_url)
+            and bool(self.ai_model.strip())
+            and (self.ai_is_local or bool(self.ai_api_key.strip()))
+        )
+
+    @property
+    def ai_client_base_url(self) -> str:
+        """返回环境变量中配置的 AI 接口地址，不提供厂商默认值。"""
+        return self.ai_base_url.strip()
 
 
 settings = Settings()

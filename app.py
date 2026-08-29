@@ -60,6 +60,18 @@ logging.basicConfig(level=logging.INFO)
 lottery_spider = None
 ai_predictor = None
 
+LOCAL_AI_MODES = {'local', 'local_url'}
+SUPPORTED_AI_MODES = {'api_key', *LOCAL_AI_MODES}
+
+
+def _get_ai_config():
+    """读取统一 AI 配置；本地模式要求显式提供部署地址。"""
+    ai_mode = os.environ.get('AI_MODE', '').strip().lower()
+    ai_api_key = os.environ.get('AI_API_KEY', '').strip()
+    ai_model = os.environ.get('AI_MODEL', '').strip()
+    ai_base_url = os.environ.get('AI_BASE_URL', '').strip()
+    return ai_mode, ai_api_key, ai_model, ai_base_url
+
 # 联赛配置（简化版）
 LEAGUES = {
     "PL": "英超",
@@ -96,18 +108,24 @@ def initialize_services():
     try:
         # 初始化AI预测器
         if AIFootballPredictor:
-            ai_api_key = os.environ.get('AI_API_KEY')
-            ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
-            ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
+            ai_mode, ai_api_key, ai_model, ai_base_url = _get_ai_config()
             
-            if not ai_api_key:
-                app.logger.warning("AI_API_KEY环境变量未设置，AI预测器将不可用")
+            if (
+                ai_mode not in SUPPORTED_AI_MODES
+                or not ai_base_url
+                or not ai_model
+                or (ai_mode not in LOCAL_AI_MODES and not ai_api_key)
+            ):
+                app.logger.warning(
+                    "AI配置未完成：请设置AI_MODE、AI_MODEL、AI_BASE_URL；远程模式还需AI_API_KEY"
+                )
                 ai_predictor = None
             else:
                 ai_predictor = AIFootballPredictor(
                     api_key=ai_api_key,
                     model_name=ai_model,
                     base_url=ai_base_url,
+                    mode=ai_mode,
                 )
                 app.logger.info("AI预测器初始化成功")
         else:
@@ -168,14 +186,13 @@ def session_debug():
 def index():
     try:
         # 将环境变量传递给前端
-        ai_api_key = os.environ.get('AI_API_KEY', '')
-        ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
-        ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
+        ai_mode, ai_api_key, ai_model, ai_base_url = _get_ai_config()
         
         # 获取当前用户信息
         current_user = get_current_user()
         
         return render_template('index.html', 
+                             ai_mode=ai_mode,
                              ai_api_key=ai_api_key,
                              ai_model=ai_model,
                              ai_base_url=ai_base_url,
@@ -438,20 +455,24 @@ def ai_predict():
         current_predictor = ai_predictor
         if not current_predictor:
             try:
-                ai_api_key = os.environ.get('AI_API_KEY')
-                ai_model = os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite')
-                ai_base_url = os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1')
+                ai_mode, ai_api_key, ai_model, ai_base_url = _get_ai_config()
                 
-                if not ai_api_key:
+                if (
+                    ai_mode not in SUPPORTED_AI_MODES
+                    or not ai_base_url
+                    or not ai_model
+                    or (ai_mode not in LOCAL_AI_MODES and not ai_api_key)
+                ):
                     return jsonify({
                         'success': False,
-                        'error': 'AI_API_KEY环境变量未设置'
+                        'error': 'AI配置未完成：请设置AI_MODE、AI_MODEL、AI_BASE_URL；远程模式还需AI_API_KEY'
                     }), 500
                     
                 current_predictor = AIFootballPredictor(
                     api_key=ai_api_key,
                     model_name=ai_model,
                     base_url=ai_base_url,
+                    mode=ai_mode,
                 )
                 app.logger.info("临时创建AI预测器")
             except Exception as e:

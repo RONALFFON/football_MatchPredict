@@ -56,7 +56,7 @@ football_MatchPredict/
 # 1. 后端（端口 8000）
 cd backend
 pip install -r requirements.txt
-cp .env.example .env   # 填入 DB / AI_API_KEY / JWT_SECRET
+   cp .env.example .env   # 填入 DB / AI 配置 / JWT_SECRET
 uvicorn app.main:app --reload --port 8000
 
 # 2. 前端（端口 3000，已配置 /api 代理到 8000）
@@ -198,10 +198,17 @@ npm run dev
    # 复制配置文件
    cp config_example.py config_local.py
    
-   # 设置环境变量（推荐方式）
+   # 远程厂商：设置统一 AI 配置（推荐方式）
+   export AI_MODE="api_key"
    export AI_API_KEY="your_api_key_here"
-   export AI_MODEL="sensenova-6.7-flash-lite"
-   export AI_BASE_URL="https://token.sensenova.cn/v1"
+   export AI_MODEL="your-model-name"
+   export AI_BASE_URL="你的远程OpenAI兼容接口地址"
+
+   # 本地 GGUF 模型（二选一；需先由推理服务加载 GGUF）
+   # export AI_MODE="local"
+   # export AI_API_KEY=""
+   # export AI_MODEL="你的本地模型名"
+   # export AI_BASE_URL="你的本地OpenAI兼容接口地址"
    
    # 或者编辑config_local.py（已弃用，建议使用环境变量）
    ```

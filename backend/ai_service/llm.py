@@ -9,28 +9,47 @@ from typing import Any, Generator, Optional
 
 import requests
 
-DEFAULT_BASE_URL = 'https://token.sensenova.cn/v1'
+LOCAL_MODES = {'local', 'local_url'}
+SUPPORTED_MODES = {'api_key', *LOCAL_MODES}
 
 
 class OpenAICompatibleClient:
     """OpenAI Chat Completions 兼容客户端（无状态，可安全共享）。"""
 
     def __init__(self, api_key: str, model_name: str,
-                 base_url: str = DEFAULT_BASE_URL, timeout: int = 30):
-        self.api_key = api_key
-        self.model_name = model_name
-        self.base_url = base_url.rstrip('/')
+                 base_url: Optional[str] = None, mode: str = '',
+                 timeout: int = 30):
+        self.api_key = (api_key or '').strip()
+        self.model_name = (model_name or '').strip()
+        self.mode = (mode or '').strip().lower()
+        self.base_url = (base_url or '').strip().rstrip('/')
         self.timeout = timeout
 
     @property
+    def is_local(self) -> bool:
+        return self.mode in LOCAL_MODES
+
+    @property
     def available(self) -> bool:
-        return bool(self.api_key)
+        return (
+            self.mode in SUPPORTED_MODES
+            and bool(self.base_url)
+            and bool(self.model_name)
+            and (self.is_local or bool(self.api_key))
+        )
 
     def _headers(self) -> dict:
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}',
-        }
+        headers = {'Content-Type': 'application/json'}
+        if self.mode == 'api_key' and self.api_key:
+            headers['Authorization'] = f'Bearer {self.api_key}'
+        return headers
+
+    @property
+    def completion_url(self) -> str:
+        """兼容配置基础地址或已经包含 /chat/completions 的完整地址。"""
+        if self.base_url.endswith('/chat/completions'):
+            return self.base_url
+        return f'{self.base_url}/chat/completions'
 
     @staticmethod
     def _messages(messages: list[dict], system: Optional[str]) -> list[dict]:
@@ -59,7 +78,7 @@ class OpenAICompatibleClient:
                  temperature: float = 0.4, max_tokens: int = 1024) -> dict:
         """非流式生成，返回原始响应 JSON；HTTP 错误抛 requests.HTTPError。"""
         resp = requests.post(
-            f'{self.base_url}/chat/completions',
+            self.completion_url,
             headers=self._headers(),
             json=self._payload(messages, system, tools, temperature, max_tokens),
             timeout=self.timeout,
@@ -71,7 +90,7 @@ class OpenAICompatibleClient:
                     temperature: float = 0.5, max_tokens: int = 1024) -> Generator[str, None, None]:
         """SSE 流式生成，按序产出文本片段。"""
         resp = requests.post(
-            f'{self.base_url}/chat/completions',
+            self.completion_url,
             headers=self._headers(),
             json=self._payload(messages, system, None, temperature, max_tokens, stream=True),
             timeout=max(self.timeout, 60),

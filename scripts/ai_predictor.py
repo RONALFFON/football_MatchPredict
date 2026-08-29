@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 import requests
 
+LOCAL_AI_MODES = {'local', 'local_url'}
+SUPPORTED_AI_MODES = {'api_key', *LOCAL_AI_MODES}
+
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,12 +36,20 @@ class AIFootballPredictor:
     def __init__(
         self,
         api_key: str,
-        model_name: str = "sensenova-6.7-flash-lite",
-        base_url: str = "https://token.sensenova.cn/v1",
+        model_name: str = "",
+        base_url: Optional[str] = None,
+        mode: str = "",
     ):
-        self.api_key = api_key
-        self.model_name = model_name
-        self.base_url = base_url.rstrip('/')
+        self.api_key = (api_key or '').strip()
+        self.model_name = (model_name or '').strip()
+        self.mode = (mode or '').strip().lower()
+        self.base_url = (base_url or '').strip().rstrip('/')
+
+    @property
+    def completion_url(self) -> str:
+        if self.base_url.endswith('/chat/completions'):
+            return self.base_url
+        return f'{self.base_url}/chat/completions'
         
     def analyze_matches(self, matches: List[Dict[str, Any]]) -> List[SimpleMatchAnalysis]:
         """分析比赛列表，为每场比赛生成独立的AI分析"""
@@ -140,12 +151,11 @@ class AIFootballPredictor:
     
     def _call_ai_model(self, prompt: str) -> Optional[str]:
         """调用 OpenAI 兼容 AI 模型。"""
-        url = f"{self.base_url}/chat/completions"
+        url = self.completion_url
         
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
+        headers = {"Content-Type": "application/json"}
+        if self.mode == 'api_key' and self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         
         payload = {
             "model": self.model_name,
@@ -216,14 +226,23 @@ class AIFootballPredictor:
 if __name__ == "__main__":
     # 初始化预测器
     import os
-    api_key = os.environ.get('AI_API_KEY')
-    if not api_key:
-        print("请设置AI_API_KEY环境变量")
+    api_key = os.environ.get('AI_API_KEY', '').strip()
+    ai_mode = os.environ.get('AI_MODE', '').strip().lower()
+    model_name = os.environ.get('AI_MODEL', '').strip()
+    base_url = os.environ.get('AI_BASE_URL', '').strip()
+    if (
+        ai_mode not in SUPPORTED_AI_MODES
+        or not model_name
+        or not base_url
+        or (ai_mode not in LOCAL_AI_MODES and not api_key)
+    ):
+        print("请完整设置AI_MODE、AI_MODEL、AI_BASE_URL；远程模式还需AI_API_KEY")
         exit(1)
     predictor = AIFootballPredictor(
         api_key,
-        model_name=os.environ.get('AI_MODEL', 'sensenova-6.7-flash-lite'),
-        base_url=os.environ.get('AI_BASE_URL', 'https://token.sensenova.cn/v1'),
+        model_name=model_name,
+        base_url=base_url,
+        mode=ai_mode,
     )
     
     # 示例比赛数据

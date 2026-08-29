@@ -597,14 +597,29 @@ class AIPredictionManager {
     // 直接调用通用 AI API 预测单场比赛
     async predictMatchWithAI(match) {
         // 从环境变量或配置中获取API密钥
+        const aiMode = String(window.AI_MODE || '').toLowerCase();
+        const localMode = aiMode === 'local' || aiMode === 'local_url';
+        const remoteMode = aiMode === 'api_key';
         const AI_API_KEY = this.getAIKey();
-        if (!AI_API_KEY) {
-            throw new Error('未找到AI_API_KEY。请先在环境变量或控制台中配置 AI API Key');
+        if (!localMode && !remoteMode) {
+            throw new Error('AI_MODE 必须设置为 api_key 或 local');
+        }
+        if (remoteMode && !AI_API_KEY) {
+            throw new Error('未找到AI_API_KEY。请先配置远程 AI API Key，或将 AI_MODE 设置为 local');
         }
 
-        const AI_MODEL = window.AI_MODEL || 'sensenova-6.7-flash-lite';
-        const AI_BASE_URL = window.AI_BASE_URL || 'https://token.sensenova.cn/v1';
-        const API_URL = `${AI_BASE_URL.replace(/\/$/, '')}/chat/completions`;
+        const AI_MODEL = window.AI_MODEL || '';
+        if (!AI_MODEL) {
+            throw new Error('未配置 AI_MODEL');
+        }
+        const AI_BASE_URL = window.AI_BASE_URL || '';
+        if (!AI_BASE_URL) {
+            throw new Error('未配置 AI_BASE_URL');
+        }
+        const normalizedBaseUrl = AI_BASE_URL.replace(/\/$/, '');
+        const API_URL = normalizedBaseUrl.endsWith('/chat/completions')
+            ? normalizedBaseUrl
+            : `${normalizedBaseUrl}/chat/completions`;
 
         // 构建详细的提示词
         const prompt = this.buildPrompt(match);
@@ -617,12 +632,16 @@ class AIPredictionManager {
         };
 
         try {
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+            if (remoteMode && AI_API_KEY) {
+                headers['Authorization'] = `Bearer ${AI_API_KEY}`;
+            }
+
             const response = await fetch(API_URL, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${AI_API_KEY}`,
-                },
+                headers,
                 body: JSON.stringify(requestBody)
             });
 
@@ -718,6 +737,11 @@ class AIPredictionManager {
 
     // 获取通用 AI API 密钥
     getAIKey() {
+        const aiMode = String(window.AI_MODE || '').toLowerCase();
+        if (aiMode === 'local' || aiMode === 'local_url') {
+            return null;
+        }
+
         // 首先尝试从环境变量获取 (Vercel配置)
         if (typeof process !== 'undefined' && process.env && process.env.AI_API_KEY) {
             return process.env.AI_API_KEY;

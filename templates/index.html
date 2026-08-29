@@ -485,7 +485,9 @@
               <!-- 环境变量注入 -->
               <script>
                   // 将后端环境变量注入到前端
-                  {% if ai_api_key %}
+                  window.AI_MODE = "{{ ai_mode }}";
+                  console.log('✅ AI模式设置为:', "{{ ai_mode }}");
+                  {% if ai_mode == 'api_key' and ai_api_key %}
                   window.AI_API_KEY = "{{ ai_api_key }}";
                   console.log('✅ AI API密钥已从环境变量加载，长度:', "{{ ai_api_key }}".length);
                   {% else %}

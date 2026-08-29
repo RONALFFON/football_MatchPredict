@@ -1,11 +1,12 @@
 # 配置文件示例
 # 请复制此文件为 config_local.py 并填入您的实际配置
 
-# 通用 AI API 配置（当前默认：商汤日日新 SenseNova）
-# 请设置环境变量: export AI_API_KEY="your_api_key_here"
-AI_API_KEY = ""  # 已移动到环境变量
-AI_MODEL = "sensenova-6.7-flash-lite"
-AI_BASE_URL = "https://token.sensenova.cn/v1"
+# 通用 AI API 配置（由部署者填写）
+# 远程厂商使用 api_key；本地 OpenAI 兼容服务使用 local
+AI_MODE = ""
+AI_API_KEY = ""  # 远程模式填写，本地模式可留空
+AI_MODEL = ""
+AI_BASE_URL = ""
 
 # Flask配置
 DEBUG = True

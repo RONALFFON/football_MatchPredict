@@ -12,7 +12,7 @@
   - 验收：`uvicorn app.main:app` 启动，`GET /health` 返回 200，`/docs` 出现 Swagger 页面
 - [ ] **M1-2** 统一响应契约与全局异常处理：`{code, message, data}` + 错误码表
   - 验收：404/500/参数校验错误均返回统一格式
-- [ ] **M1-3** 配置管理：Pydantic Settings 读取环境变量（DB/SenseNova/JWT/CORS），本地 `.env` + `.gitignore`
+- [ ] **M1-3** 配置管理：Pydantic Settings 读取环境变量（DB/AI/JWT/CORS），本地 `.env` + `.gitignore`
   - 验收：代码中无任何硬编码密钥与路径
 - [ ] **M1-4** SQLAlchemy/asyncpg 接入：独立 schema `pl_analytics`，初始化迁移脚本（Alembic 或 init SQL）
   - 验收：本地可连库建表，连接串全部来自环境变量
@@ -71,7 +71,7 @@
 ### 后端
 - [ ] **M4-1** Agent 工具层：6 个工具实现（recent_form / h2h / team_stats / standings / odds_movement / predict_match），统一注册到 Tool Registry
   - 验收：每个工具有单元测试，返回结构化 JSON
-- [ ] **M4-2** Orchestrator：SenseNova OpenAI 兼容工具调用 + ReAct 循环（上限 5 轮），工具结果回填上下文
+- [ ] **M4-2** Orchestrator：OpenAI 兼容模型服务工具调用 + ReAct 循环（上限 5 轮），工具结果回填上下文
   - 验收：给定"阿森纳最近状态如何"能正确触发 query_recent_form 并给出基于真实数据的回答
 - [ ] **M4-3** 系统提示词与护栏：技术研究声明、禁止投注建议、数字必须来自工具、防幻觉指令
 - [ ] **M4-4** SSE 流式输出：`POST /api/v1/agent/chat` 返回 StreamingResponse（文本增量 + 工具调用事件）

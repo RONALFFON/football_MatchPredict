@@ -33,7 +33,7 @@ def run_agent(question: str,
               provider: PlDataProvider) -> Generator[dict, None, None]:
     """执行一次 Agent 对话，产出事件流。history 为 [{role, text}] 的早期上下文。"""
     if not llm.available:
-        yield {'type': 'error', 'message': 'AI服务未配置（缺少 AI_API_KEY）'}
+        yield {'type': 'error', 'message': 'AI服务未配置（请检查 AI_MODE、AI_BASE_URL 和 AI_API_KEY）'}
         return
 
     registry = ToolRegistry(provider)

@@ -29,7 +29,8 @@ def meta():
     """前端启动自检：服务状态与能力开关（不泄露任何密钥）。"""
     return ok({
         'db_ready': database.configured,
-        'ai_ready': bool(settings.ai_api_key),
+        'ai_ready': settings.ai_ready,
+        'ai_mode': settings.ai_mode,
         'ai_model': settings.ai_model,
     })
 

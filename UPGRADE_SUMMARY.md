@@ -55,14 +55,15 @@
 
 ### 环境变量配置
 在Vercel中设置以下环境变量：
+- `AI_MODE`: `api_key`（远程厂商）或 `local`（本地部署）
 - `AI_API_KEY`: 当前 AI 厂商的 API Key
-- `AI_MODEL`: 模型名称（默认: sensenova-6.7-flash-lite）
-- `AI_BASE_URL`: OpenAI 兼容接口地址（默认: https://token.sensenova.cn/v1）
+- `AI_MODEL`: 模型名称（必须填写）
+- `AI_BASE_URL`: 模型服务接口地址（必须填写；本地模式指向已加载 GGUF 的推理服务）
 
 ### 功能说明
 - **经典模式**: 完全本地化，不需要API密钥
 - **彩票模式**: 爬取公开数据，不需要API密钥  
-- **AI模式**: 需要 `AI_API_KEY`，如未设置将显示错误提示
+- **AI模式**: 远程模式需要 `AI_API_KEY`，本地 GGUF 模式使用 `AI_BASE_URL`，如未配置将显示错误提示
 
 ## 🎨 UI/UX 改进
 

@@ -14,9 +14,5 @@
       "src": "/(.*)",
       "dest": "app.py"
     }
-  ],
-  "env": {
-    "AI_MODEL": "sensenova-6.7-flash-lite",
-    "AI_BASE_URL": "https://token.sensenova.cn/v1"
-  }
+  ]
 }

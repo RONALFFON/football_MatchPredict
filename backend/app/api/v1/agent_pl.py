@@ -42,7 +42,8 @@ def pl_agent_chat(payload: ChatRequest,
     llm = OpenAICompatibleClient(
         settings.ai_api_key,
         settings.ai_model,
-        settings.ai_base_url,
+        settings.ai_client_base_url,
+        mode=settings.ai_mode,
     )
     provider = RepositoryDataProvider()
 

@@ -21,15 +21,16 @@ def _get_predictor():
     global _predictor
     if _predictor is not None:
         return _predictor
-    if not settings.ai_api_key:
-        return None
     try:
         from ai_service import FootballAiPredictor, OpenAICompatibleClient
         llm = OpenAICompatibleClient(
             settings.ai_api_key,
             settings.ai_model,
-            settings.ai_base_url,
+            settings.ai_client_base_url,
+            mode=settings.ai_mode,
         )
+        if not llm.available:
+            return None
         _predictor = FootballAiPredictor(llm)
         return _predictor
     except Exception as e:  # pragma: no cover
@@ -41,7 +42,7 @@ def _get_predictor():
 def ai_predict(payload: MatchBatchRequest):
     predictor = _get_predictor()
     if predictor is None:
-        return fail('AI服务未配置（缺少 AI_API_KEY）', code=500)
+        return fail('AI服务未配置（请检查 AI_MODE、AI_BASE_URL 和 AI_API_KEY）', code=500)
 
     try:
         matches = [match.model_dump(exclude_none=True) for match in payload.matches]

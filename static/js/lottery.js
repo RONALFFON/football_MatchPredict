@@ -950,21 +950,42 @@ class LotteryManager {
 
     async callAIForParlay(prompt) {
         // 获取API密钥
-        const apiKey = window.AI_API_KEY || localStorage.getItem('AI_API_KEY');
-        if (!apiKey) {
-            throw new Error('未配置 AI API 密钥');
+        const aiMode = String(window.AI_MODE || '').toLowerCase();
+        const localMode = aiMode === 'local' || aiMode === 'local_url';
+        const remoteMode = aiMode === 'api_key';
+        const apiKey = remoteMode
+            ? (window.AI_API_KEY || localStorage.getItem('AI_API_KEY'))
+            : '';
+        if (!localMode && !remoteMode) {
+            throw new Error('AI_MODE 必须设置为 api_key 或 local');
+        }
+        if (remoteMode && !apiKey) {
+            throw new Error('未配置 AI_API_KEY；远程模式请填写 Key，本地模式请将 AI_MODE 设置为 local');
         }
 
-        const model = window.AI_MODEL || 'sensenova-6.7-flash-lite';
-        const baseUrl = window.AI_BASE_URL || 'https://token.sensenova.cn/v1';
-        const apiUrl = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+        const model = window.AI_MODEL || '';
+        if (!model) {
+            throw new Error('未配置 AI_MODEL');
+        }
+        const baseUrl = window.AI_BASE_URL || '';
+        if (!baseUrl) {
+            throw new Error('未配置 AI_BASE_URL');
+        }
+        const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
+        const apiUrl = normalizedBaseUrl.endsWith('/chat/completions')
+            ? normalizedBaseUrl
+            : `${normalizedBaseUrl}/chat/completions`;
+
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (remoteMode && apiKey) {
+            headers['Authorization'] = `Bearer ${apiKey}`;
+        }
 
         const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-            },
+            headers,
             body: JSON.stringify({
                 model,
                 messages: [{ role: 'user', content: prompt }],
