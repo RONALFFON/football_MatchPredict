@@ -2,6 +2,10 @@
 .env
 .env.*
 !.env.example
+node_modules/
+.venv/
+venv/
+env/
 config.py
 !backend/app/core/config.py
 config_local.py
