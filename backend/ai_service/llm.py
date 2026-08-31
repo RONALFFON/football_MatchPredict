@@ -40,7 +40,8 @@ class OpenAICompatibleClient:
 
     def _headers(self) -> dict:
         headers = {'Content-Type': 'application/json'}
-        if self.mode == 'api_key' and self.api_key:
+        # 本地 LM Studio 也可能开启 API Key 鉴权；有值就发送，空值保持匿名。
+        if self.api_key:
             headers['Authorization'] = f'Bearer {self.api_key}'
         return headers
 

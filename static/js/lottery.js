@@ -953,9 +953,9 @@ class LotteryManager {
         const aiMode = String(window.AI_MODE || '').toLowerCase();
         const localMode = aiMode === 'local' || aiMode === 'local_url';
         const remoteMode = aiMode === 'api_key';
-        const apiKey = remoteMode
-            ? (window.AI_API_KEY || localStorage.getItem('AI_API_KEY'))
-            : '';
+        const apiKey = window.AI_API_KEY
+            || (remoteMode ? localStorage.getItem('AI_API_KEY') : '')
+            || '';
         if (!localMode && !remoteMode) {
             throw new Error('AI_MODE 必须设置为 api_key 或 local');
         }
@@ -979,7 +979,8 @@ class LotteryManager {
         const headers = {
             'Content-Type': 'application/json',
         };
-        if (remoteMode && apiKey) {
+        // 本地服务未开启鉴权时不发送；开启鉴权且配置了 Key 时发送。
+        if (apiKey) {
             headers['Authorization'] = `Bearer ${apiKey}`;
         }
 

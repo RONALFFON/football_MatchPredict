@@ -11,7 +11,7 @@
 
 ### 2. AI_API_KEY
 - **描述**: 当前 AI 厂商的 API Key
-- **必需**: `AI_MODE=api_key` 时必需；`AI_MODE=local` 时可留空
+- **必需**: `AI_MODE=api_key` 时必需；`AI_MODE=local` 时通常可留空，但本地服务开启鉴权时需要填写
 - **示例**: `AI_API_KEY=your_api_key_here`
 
 ### 3. AI_MODEL
@@ -42,6 +42,8 @@ AI_BASE_URL=你的远程OpenAI兼容接口地址
 # AI_BASE_URL=你的本地OpenAI兼容接口地址（通常包含 /v1）
 ```
 
+本地 OpenAI 兼容服务未开启鉴权时 `AI_API_KEY` 留空；如果 LM Studio Server Settings 开启了 API Key 鉴权，填写本地服务对应的 Key。
+
 如果使用 LM Studio 加载 GGUF，先请求 `GET <服务地址>/v1/models`，将返回的模型 `id` 填入 `AI_MODEL`；GGUF 文件路径本身不填入环境变量。
 
 ### 方法2: 直接设置环境变量
@@ -59,7 +61,7 @@ export AI_BASE_URL="你的远程OpenAI兼容接口地址"
 3. 进入 "Settings" → "Environment Variables"
 4. 添加以下环境变量：
    - Name: `AI_MODE`, Value: `api_key` 或 `local`
-   - Name: `AI_API_KEY`, Value: `远程模式的 API Key；本地模式留空`
+   - Name: `AI_API_KEY`, Value: `远程模式或开启鉴权的本地服务 Key`
    - Name: `AI_MODEL`, Value: `当前 AI 服务的模型名`
    - Name: `AI_BASE_URL`, Value: `当前 AI 服务的 OpenAI 兼容接口地址`
 
@@ -72,7 +74,7 @@ export AI_BASE_URL="你的远程OpenAI兼容接口地址"
 ## 功能说明
 
 - `AI_MODE=api_key` 时必须设置 `AI_API_KEY`。
-- `AI_MODE=local` 时不强制要求 API Key，但必须设置可访问的 `AI_BASE_URL`。
+- `AI_MODE=local` 时通常不强制要求 API Key；若本地服务开启鉴权则必须填写，同时必须设置可访问的 `AI_BASE_URL`。
 - 两种模式都必须设置 `AI_MODEL` 和 `AI_BASE_URL`。
 - 经典模式使用本地算法，不依赖任何外部API
 - 彩票模式爬取公开数据，不需要 AI API Key

@@ -29,6 +29,8 @@ AI_MODEL=你的本地模型名
 AI_BASE_URL=你的本地GGUF推理服务地址
 ```
 
+本地服务未开启鉴权时 `AI_API_KEY` 留空；如果 LM Studio 的 Server Settings 开启了 API Key 鉴权，则填写本地服务对应的 Key，项目会在本地模式下自动发送它。
+
 本地 URL 必须从后端运行环境可访问；例如后端在 Docker 中运行时，容器内的 `localhost` 不是宿主机。项目会自动补上 `/chat/completions`，也接受已经包含该路径的完整 URL。
 
 以 LM Studio 加载 GGUF 为例，`AI_BASE_URL` 使用服务器地址加 `/v1`，`AI_MODEL` 使用模型接口返回的标识，不填写 GGUF 文件路径：
@@ -64,7 +66,7 @@ localStorage.setItem('AI_API_KEY', 'your_api_key_here')
 
 ```text
 POST <AI_BASE_URL>/chat/completions
-Authorization: Bearer <AI_API_KEY>  # api_key 模式发送；local 模式省略
+Authorization: Bearer <AI_API_KEY>  # 配置了 AI_API_KEY 时发送；未配置时省略
 ```
 
 提示词包含比赛分析、胜平负、比分、半全场、进球数和风险提示。
@@ -72,6 +74,6 @@ Authorization: Bearer <AI_API_KEY>  # api_key 模式发送；local 模式省略
 ## 🔍 故障排除
 
 - `AI服务未配置`：远程模式检查 `AI_API_KEY`；本地模式检查 `AI_BASE_URL` 和 `AI_MODE=local`，并重启后端。
-- `401`：检查 API Key 是否正确、是否已在控制台开通服务。
+- `401`：远程模式检查厂商 API Key；本地模式检查 LM Studio 是否开启鉴权，并确认 `AI_API_KEY` 与本地 Key 一致。
 - `404`：检查模型名和 `AI_BASE_URL` 是否匹配。
 - `429`：稍后重试，服务端已对限流进行重试处理。

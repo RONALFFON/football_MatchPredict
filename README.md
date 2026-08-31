@@ -206,7 +206,7 @@ npm run dev
 
    # 本地 GGUF 模型（二选一；需先由推理服务加载 GGUF）
    # export AI_MODE="local"
-   # export AI_API_KEY=""
+   # export AI_API_KEY=""  # 本地服务未开启鉴权时留空
    # export AI_MODEL="你的本地模型名"
    # export AI_BASE_URL="你的本地OpenAI兼容接口地址"
    

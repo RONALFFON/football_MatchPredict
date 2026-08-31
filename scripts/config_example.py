@@ -4,7 +4,7 @@
 # 通用 AI API 配置（由部署者填写）
 # 远程厂商使用 api_key；本地 OpenAI 兼容服务使用 local
 AI_MODE = ""
-AI_API_KEY = ""  # 远程模式填写，本地模式可留空
+AI_API_KEY = ""  # 远程模式必填；本地服务未开启鉴权时留空
 AI_MODEL = ""
 AI_BASE_URL = ""
 

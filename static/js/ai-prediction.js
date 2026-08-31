@@ -635,7 +635,8 @@ class AIPredictionManager {
             const headers = {
                 'Content-Type': 'application/json',
             };
-            if (remoteMode && AI_API_KEY) {
+            // 本地服务未开启鉴权时不发送；开启鉴权且配置了 Key 时发送。
+            if (AI_API_KEY) {
                 headers['Authorization'] = `Bearer ${AI_API_KEY}`;
             }
 
@@ -738,6 +739,11 @@ class AIPredictionManager {
     // 获取通用 AI API 密钥
     getAIKey() {
         const aiMode = String(window.AI_MODE || '').toLowerCase();
+
+        // 本地服务的 Key 只使用后端显式注入的值，避免误用浏览器中残留的远程 Key。
+        if (window.AI_API_KEY) {
+            return window.AI_API_KEY;
+        }
         if (aiMode === 'local' || aiMode === 'local_url') {
             return null;
         }
@@ -745,11 +751,6 @@ class AIPredictionManager {
         // 首先尝试从环境变量获取 (Vercel配置)
         if (typeof process !== 'undefined' && process.env && process.env.AI_API_KEY) {
             return process.env.AI_API_KEY;
-        }
-        
-        // 然后尝试从全局变量获取 (环境变量注入)
-        if (window.AI_API_KEY) {
-            return window.AI_API_KEY;
         }
         
         // 最后尝试从localStorage获取 (用户手动设置)
