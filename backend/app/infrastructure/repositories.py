@@ -42,8 +42,7 @@ def _consume_prediction_cursor(cursor, user_id: int) -> dict | None:
                last_prediction_date = CURRENT_DATE
          WHERE id = %s AND is_active = TRUE
            AND (user_type = 'premium'
-                OR last_prediction_date < CURRENT_DATE
-                OR daily_predictions_used < 3)
+                OR last_prediction_date < CURRENT_DATE)
      RETURNING """ + USER_FIELDS,
         (user_id,),
     )
@@ -97,7 +96,7 @@ class UserRepository:
             return _json_row(result)
 
     def can_predict(self, user: dict) -> bool:
-        return user['user_type'] == 'premium' or user['daily_predictions_used'] < 3
+        return True
 
     def consume_prediction(self, user_id: int) -> dict | None:
         """原子扣减配额，避免检查和扣减之间产生竞态。"""

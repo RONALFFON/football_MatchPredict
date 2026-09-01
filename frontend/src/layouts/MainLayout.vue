@@ -44,9 +44,6 @@ onMounted(() => {
           <span class="badge" :class="{ premium: auth.user.user_type === 'premium' }">
             {{ auth.user.user_type === 'premium' ? '会员' : '免费' }}
           </span>
-          <span class="badge quota">
-            {{ auth.remaining === -1 ? '无限制' : `今日剩余 ${auth.remaining}/3` }}
-          </span>
           <button class="btn ghost sm" @click="auth.logout()">退出</button>
         </template>
         <template v-else>

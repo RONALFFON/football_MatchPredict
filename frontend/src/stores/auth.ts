@@ -12,7 +12,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isLoggedIn = computed(() => !!user.value)
   const remaining = computed(() => {
     if (!user.value) return 0
-    return user.value.user_type === 'premium' ? -1 : Math.max(0, 3 - user.value.daily_predictions_used)
+    return -1
   })
 
   async function login(username: string, password: string) {

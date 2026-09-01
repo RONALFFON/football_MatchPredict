@@ -53,7 +53,7 @@ def me(user=Depends(get_current_user)):
 def can_predict(user=Depends(get_current_user), users: UserRepository = Depends(get_users)):
     if user is None:
         return fail('未登录', code=401)
-    remaining = -1 if user['user_type'] == 'premium' else max(0, 3 - user['daily_predictions_used'])
+    remaining = -1
     return ok({
         'can_predict': users.can_predict(user),
         'user_type': user['user_type'],

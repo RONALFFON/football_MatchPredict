@@ -94,8 +94,7 @@ async function send(text?: string) {
 <template>
   <h1 class="page-title">英超 AI 分析助手</h1>
   <p class="page-sub">
-    Agent 实时调用数据库工具作答 · 免费用户每日 3 次 ·
-    当前剩余：<b>{{ auth.isLoggedIn ? (auth.remaining === -1 ? '无限制' : `${auth.remaining} 次`) : '未登录' }}</b>
+    Agent 实时调用数据库工具作答
   </p>
 
   <div class="card chat-box">
