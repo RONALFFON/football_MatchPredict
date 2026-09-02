@@ -2,10 +2,25 @@
 .env
 .env.*
 !.env.example
+
+# Dependencies
 node_modules/
 .venv/
 venv/
 env/
+
+# Downloaded Node.js binary
+node-v*/
+
+# Python
+__pycache__/
+*.pyc
 config.py
 !backend/app/core/config.py
 config_local.py
+
+# OS
+.DS_Store
+
+# Logs
+*.log
