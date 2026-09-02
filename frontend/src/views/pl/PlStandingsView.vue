@@ -1,20 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import * as api from '../../api'
-import type { Standing } from '../../api/types'
-import { errorMessage } from '../../shared/error'
+import { onMounted, computed } from 'vue'
+import * as api from '@/api'
+import { useRequest } from '@/composables/useRequest'
+import type { Standing } from '@/api/types'
 
-const standings = ref<Standing[]>([])
-const error = ref('')
+const req = useRequest<{ standings: Standing[] }>()
+const standings = computed(() => req.data.value?.standings ?? [])
 
-onMounted(async () => {
-  try {
-    const data = await api.getPlStandings()
-    standings.value = data.standings
-  } catch (e: unknown) {
-    error.value = errorMessage(e)
-  }
-})
+onMounted(() => req.execute(() => api.getPlStandings()))
 
 function rowClass(pos: number) {
   if (pos <= 4) return 'row-ucl'
@@ -26,11 +19,11 @@ function rowClass(pos: number) {
 <template>
   <h1 class="page-title">英超积分榜</h1>
   <p class="page-sub">
-    <span style="color: var(--accent)">■</span> 欧冠区（1-4）　
-    <span style="color: var(--danger)">■</span> 降级区（18-20）
+    <span class="legend-ucl">■</span> 欧冠区（1-4）
+    <span class="legend-rel">■</span> 降级区（18-20）
   </p>
 
-  <div v-if="error" class="alert info">{{ error }}</div>
+  <div v-if="req.error.value" class="alert info">{{ req.error.value }}</div>
 
   <div class="card" v-if="standings.length">
     <table class="table">
@@ -57,5 +50,5 @@ function rowClass(pos: number) {
       </tbody>
     </table>
   </div>
-  <div v-else-if="!error" class="empty">暂无积分榜数据</div>
+  <div v-else-if="!req.loading.value && !req.error.value" class="empty">暂无积分榜数据</div>
 </template>

@@ -7,13 +7,9 @@ import type {
   MatchInput,
   PlMatch,
   Standing,
+  TeamsData,
   UserInfo,
 } from './types'
-
-interface TeamsData {
-  leagues: Record<string, string>
-  teams: Record<string, string[]>
-}
 
 interface MatchList<T> {
   matches: T[]

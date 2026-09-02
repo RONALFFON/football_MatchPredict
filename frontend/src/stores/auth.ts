@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import * as api from '../api'
-import { setToken } from '../api/client'
-import type { UserInfo } from '../api/types'
+import * as api from '@/api'
+import { setToken } from '@/api/client'
+import type { UserInfo } from '@/api/types'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<UserInfo | null>(null)
@@ -10,10 +10,6 @@ export const useAuthStore = defineStore('auth', () => {
   const authModalTab = ref<'login' | 'register'>('login')
 
   const isLoggedIn = computed(() => !!user.value)
-  const remaining = computed(() => {
-    if (!user.value) return 0
-    return -1
-  })
 
   async function login(username: string, password: string) {
     const data = await api.login(username, password)
@@ -44,6 +40,5 @@ export const useAuthStore = defineStore('auth', () => {
     authModalOpen.value = true
   }
 
-  return { user, authModalOpen, authModalTab, isLoggedIn, remaining,
-           login, register, fetchMe, logout, openModal }
+  return { user, authModalOpen, authModalTab, isLoggedIn, login, register, fetchMe, logout, openModal }
 })

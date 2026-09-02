@@ -34,7 +34,10 @@ http.interceptors.response.use(
   (error) => {
     const detail = error.response?.data?.detail
     const message = typeof detail === 'object' ? detail?.message : detail
-    if (error.response?.status === 401) setToken('')
+    if (error.response?.status === 401) {
+      setToken('')
+      window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+    }
     return Promise.reject(new Error(message || error.message || '网络错误'))
   },
 )

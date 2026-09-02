@@ -1,3 +1,8 @@
+export interface TeamsData {
+  leagues: Record<string, string>
+  teams: Record<string, string[]>
+}
+
 export interface UserInfo {
   username: string
   email?: string
