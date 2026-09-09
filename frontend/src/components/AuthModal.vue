@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { errorMessage } from '@/shared/error'
@@ -12,6 +12,30 @@ const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const touched = ref({ username: false, email: false, password: false })
+
+const modal = ref<HTMLElement | null>(null)
+const previousFocus = document.activeElement as HTMLElement | null
+const previousOverflow = document.body.style.overflow
+function close() { auth.authModalOpen = false }
+function onKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') close()
+  if (event.key !== 'Tab') return
+  const focusable = Array.from(modal.value?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]') ?? [])
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+}
+onMounted(() => {
+  document.body.style.overflow = 'hidden'
+  modal.value?.querySelector<HTMLInputElement>('input')?.focus()
+  window.addEventListener('keydown', onKeydown)
+})
+onUnmounted(() => {
+  document.body.style.overflow = previousOverflow
+  window.removeEventListener('keydown', onKeydown)
+  previousFocus?.focus()
+})
 
 const isRegister = computed(() => auth.authModalTab === 'register')
 
@@ -27,6 +51,7 @@ const errors = computed(() => {
 const hasError = computed(() => Object.keys(errors.value).length > 0)
 
 async function submit() {
+  if (loading.value) return
   touched.value = { username: true, email: true, password: true }
   if (hasError.value) return
 
@@ -56,29 +81,30 @@ function switchTab(tab: 'login' | 'register') {
 
 <template>
   <div class="modal-mask" @click.self="auth.authModalOpen = false">
-    <div class="modal">
+    <div ref="modal" class="modal" role="dialog" aria-modal="true" :aria-label="isRegister ? '注册账号' : '登录账号'">
+      <button class="modal-close" aria-label="关闭弹窗" @click="close">✕</button>
       <div class="modal-tabs">
-        <div class="tab" :class="{ active: !isRegister }" @click="switchTab('login')">登录</div>
-        <div class="tab" :class="{ active: isRegister }" @click="switchTab('register')">注册</div>
+        <button type="button" class="tab" :class="{ active: !isRegister }" @click="switchTab('login')">登录</button>
+        <button type="button" class="tab" :class="{ active: isRegister }" @click="switchTab('register')">注册</button>
       </div>
 
       <div class="form-row">
-        <label class="form-label">用户名</label>
-        <input class="input" v-model="username" placeholder="至少 3 个字符"
+        <label class="form-label" for="auth-username">用户名</label>
+        <input autocomplete="username" id="auth-username" class="input" v-model="username" placeholder="至少 3 个字符"
                :class="{ invalid: errors.username }" @blur="touched.username = true" />
         <span v-if="errors.username" class="field-error">{{ errors.username }}</span>
       </div>
 
       <div v-if="isRegister" class="form-row">
-        <label class="form-label">邮箱</label>
-        <input class="input" v-model="email" type="email" placeholder="you@example.com"
+        <label class="form-label" for="auth-email">邮箱</label>
+        <input autocomplete="email" id="auth-email" class="input" v-model="email" type="email" placeholder="you@example.com"
                :class="{ invalid: errors.email }" @blur="touched.email = true" />
         <span v-if="errors.email" class="field-error">{{ errors.email }}</span>
       </div>
 
       <div class="form-row">
-        <label class="form-label">密码</label>
-        <input class="input" v-model="password" type="password" placeholder="至少 6 个字符"
+        <label class="form-label" for="auth-password">密码</label>
+        <input :autocomplete="isRegister ? 'new-password' : 'current-password'" id="auth-password" class="input" v-model="password" type="password" placeholder="至少 6 个字符"
                :class="{ invalid: errors.password }" @blur="touched.password = true"
                @keyup.enter="submit" />
         <span v-if="errors.password" class="field-error">{{ errors.password }}</span>

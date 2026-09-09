@@ -7,7 +7,8 @@ import type { Standing } from '@/api/types'
 const req = useRequest<{ standings: Standing[] }>()
 const standings = computed(() => req.data.value?.standings ?? [])
 
-onMounted(() => req.execute(() => api.getPlStandings()))
+function load() { return req.execute(() => api.getPlStandings()) }
+onMounted(load)
 
 function rowClass(pos: number) {
   if (pos <= 4) return 'row-ucl'
@@ -23,10 +24,11 @@ function rowClass(pos: number) {
     <span class="legend-rel">■</span> 降级区（18-20）
   </p>
 
-  <div v-if="req.error.value" class="alert info">{{ req.error.value }}</div>
+  <div v-if="req.error.value" class="alert error" role="alert">{{ req.error.value }} <button class="btn ghost sm" @click="load">重试</button></div>
+  <div v-if="req.loading.value" aria-label="正在加载积分榜" aria-busy="true"><div v-for="n in 5" :key="n" class="skeleton" /></div>
 
   <div class="card" v-if="standings.length">
-    <table class="table">
+    <div class="table-scroll" tabindex="0" role="region" aria-label="积分榜，可横向滚动"><table class="table standings-table">
       <thead>
         <tr>
           <th>#</th><th>球队</th>
@@ -48,7 +50,7 @@ function rowClass(pos: number) {
           <td class="num"><b>{{ t.points }}</b></td>
         </tr>
       </tbody>
-    </table>
+    </table></div>
   </div>
   <div v-else-if="!req.loading.value && !req.error.value" class="empty">暂无积分榜数据</div>
 </template>

@@ -114,7 +114,7 @@ onUnmounted(stopStream)
 
 <template>
   <h1 class="page-title">英超 AI 分析助手</h1>
-  <p class="page-sub">Agent 实时调用数据库工具作答</p>
+  <p class="page-sub">聊聊球队近况、历史交锋，或下一场比赛的可能走向。</p>
 
   <div class="card chat-box">
     <div class="chat-messages" ref="listRef">

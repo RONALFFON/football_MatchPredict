@@ -10,6 +10,10 @@ const toast = useToastStore()
 const days = ref(3)
 const selected = ref<Set<number>>(new Set())
 const source = ref('')
+const resultsSection = ref<HTMLElement | null>(null)
+function showResults() {
+  resultsSection.value?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' })
+}
 
 const matchReq = useRequest<{ matches: LotteryMatch[]; source?: string }>()
 const predictReq = useRequest<{ individual_predictions: ClassicPrediction[] }>()
@@ -18,7 +22,10 @@ const matches = computed(() => matchReq.data.value?.matches ?? [])
 const results = computed(() => predictReq.data.value?.individual_predictions ?? [])
 
 async function load(fromLive = false) {
+  if (matchReq.loading.value || predictReq.loading.value) return
   selected.value.clear()
+  predictReq.data.value = undefined
+  predictReq.error.value = ''
   const data = await matchReq.execute(() =>
     fromLive ? api.refreshLottery(days.value) : api.getLotteryMatches(days.value),
   )
@@ -58,42 +65,39 @@ onMounted(() => load())
 
 <template>
   <h1 class="page-title">彩票模式 · 体彩数据</h1>
-  <p class="page-sub">中国体育彩票胜平负赛程（数据库优先，数据由定时任务同步）</p>
+  <p class="page-sub">发现值得关注的对阵，选择多场比赛，一次完成概率分析。</p>
 
   <div class="card">
     <div class="toolbar">
-      <label class="text-dim toolbar-label">获取天数</label>
-      <select class="select toolbar-select" v-model.number="days">
+      <label class="text-dim toolbar-label">赛程范围</label>
+      <select class="select toolbar-select" aria-label="赛程天数" :disabled="matchReq.loading.value || predictReq.loading.value" v-model.number="days">
         <option v-for="d in 7" :key="d" :value="d">{{ d }} 天</option>
       </select>
-      <button class="btn primary" :disabled="matchReq.loading.value" @click="load(false)">加载赛程</button>
-      <button class="btn ghost" :disabled="matchReq.loading.value" @click="load(true)">实时刷新</button>
-      <button class="btn accent" :disabled="predictReq.loading.value || !selected.size" @click="batchPredict">
-        预测已选 ({{ selected.size }})
-      </button>
-      <span v-if="source" class="text-dim toolbar-source">来源：{{ source }}</span>
+      <button class="btn primary" :disabled="matchReq.loading.value || predictReq.loading.value" @click="load(false)">加载赛程</button>
+      <button class="btn ghost" :disabled="matchReq.loading.value || predictReq.loading.value" @click="load(true)">实时刷新</button>
+      <span v-if="source" class="text-dim toolbar-source">{{ matches.length }} 场比赛可供查看</span>
     </div>
   </div>
 
-  <div v-if="matchReq.error.value" class="alert error">{{ matchReq.error.value }}</div>
-  <div v-if="matchReq.loading.value && !matches.length" class="empty">加载中…</div>
-  <div v-else-if="!matches.length && !matchReq.loading.value" class="empty">暂无比赛数据</div>
+  <div v-if="matchReq.error.value" class="alert error" role="alert">{{ matchReq.error.value }} <button class="btn ghost sm" @click="load(false)">重试</button></div>
+  <div v-if="predictReq.error.value" class="alert error" role="alert">{{ predictReq.error.value }}</div>
+  <div v-if="matchReq.loading.value && !matches.length" aria-label="正在加载比赛" aria-busy="true"><div v-for="n in 4" :key="n" class="skeleton" /></div>
+  <div v-else-if="!matches.length && !matchReq.loading.value && !matchReq.error.value" class="empty">暂无比赛数据</div>
 
-  <div
+  <label
     v-for="(m, i) in matches"
     :key="m.match_id || i"
-    class="match-row"
+    class="match-row selectable"
     :class="{ 'match-selected': selected.has(i) }"
-    @click="toggle(i)"
   >
-    <input type="checkbox" :checked="selected.has(i)" @click.stop="toggle(i)" />
-    <div class="match-teams">{{ m.home_team }} <span class="vs">vs</span> {{ m.away_team }}</div>
-    <div class="match-meta">{{ m.league_name || '' }} · {{ m.match_time || m.match_date || '' }}</div>
-  </div>
+    <input type="checkbox" :checked="selected.has(i)" :disabled="predictReq.loading.value || matchReq.loading.value" :aria-label="`选择 ${m.home_team} 对 ${m.away_team}`" @change="toggle(i)" />
+    <span class="match-teams">{{ m.home_team }} <span class="vs">vs</span> {{ m.away_team }}</span>
+    <span class="match-meta">{{ m.league_name || '' }} · {{ m.match_time || m.match_date || '' }}</span>
+  </label>
 
-  <div v-if="results.length" class="card mt-12">
+  <div v-if="results.length" ref="resultsSection" class="card mt-12 results-section">
     <div class="card-title">预测结果</div>
-    <table class="table">
+    <div class="table-scroll" tabindex="0" role="region" aria-label="批量预测结果，可横向滚动"><table class="table">
       <thead>
         <tr><th>比赛</th><th class="num">主胜</th><th class="num">平局</th><th class="num">客胜</th><th>推荐</th></tr>
       </thead>
@@ -106,6 +110,12 @@ onMounted(() => load())
           <td>{{ r.recommendation }}</td>
         </tr>
       </tbody>
-    </table>
+    </table></div>
+  </div>
+  <div v-if="matches.length" class="selection-bar">
+    <span>已选 <strong>{{ selected.size }}</strong> 场比赛</span>
+    <button class="btn ghost sm" :disabled="!selected.size || predictReq.loading.value" @click="selected.clear()">清空</button>
+    <button v-if="results.length" class="btn ghost sm" @click="showResults">查看结果 ↓</button>
+    <button class="btn primary" :disabled="predictReq.loading.value || matchReq.loading.value || !selected.size" @click="batchPredict"><span v-if="predictReq.loading.value" class="spinner" />{{ predictReq.loading.value ? '正在分析…' : '预测已选比赛 →' }}</button>
   </div>
 </template>

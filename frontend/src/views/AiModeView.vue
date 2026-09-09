@@ -20,6 +20,10 @@ function addMatch() {
     toast.error('请填写主客队名称')
     return
   }
+  if (form.value.home.trim() === form.value.away.trim()) {
+    toast.error('请选择两支不同的球队')
+    return
+  }
   if (queue.value.length >= 20) {
     toast.error('每批最多分析 20 场比赛')
     return
@@ -53,7 +57,7 @@ async function runAi() {
 
 <template>
   <h1 class="page-title">AI 智能模式</h1>
-  <p class="page-sub">大模型深度分析：胜平负 / 比分 / 半全场 / 进球数 / 风险提示（密钥由服务端保管）</p>
+  <p class="page-sub">把多场对阵加入队列，从胜平负、比分到进球数，一起探索比赛走势。</p>
 
   <div class="grid-2">
     <div class="card">
@@ -72,7 +76,7 @@ async function runAi() {
         <label class="form-label">联赛</label>
         <input class="input" v-model="form.league" />
       </div>
-      <div class="grid-3">
+      <div class="odds-grid">
         <div class="form-row">
           <label class="form-label">主胜赔率</label>
           <input class="input mono" v-model="form.h" />
@@ -87,7 +91,7 @@ async function runAi() {
         </div>
       </div>
       <div class="toolbar">
-        <button class="btn ghost" @click="addMatch">+ 添加到队列</button>
+        <button class="btn ghost" :disabled="aiReq.loading.value" @click="addMatch">+ 添加到队列</button>
         <button class="btn primary" :disabled="aiReq.loading.value || !queue.length" @click="runAi">
           {{ aiReq.loading.value ? 'AI 分析中…' : 'AI 智能预测' }}
         </button>
@@ -97,7 +101,7 @@ async function runAi() {
         <div v-for="(m, i) in queue" :key="i" class="match-row">
           <div class="match-teams">{{ m.home_team }} <span class="vs">vs</span> {{ m.away_team }}</div>
           <div class="match-meta">{{ m.league_name }}</div>
-          <button class="btn ghost sm" @click="removeMatch(i)">移除</button>
+          <button class="btn ghost sm" :disabled="aiReq.loading.value" @click="removeMatch(i)">移除</button>
         </div>
       </div>
     </div>
