@@ -13,6 +13,7 @@ export interface UserInfo {
 }
 
 export interface MatchInput {
+  match_id?: string
   home_team: string
   away_team: string
   league_name?: string
@@ -23,6 +24,8 @@ export interface MatchInput {
 }
 
 export interface MatchOdds {
+  type?: 'had' | 'hhad'
+  update_time?: string
   hhad?: { h: number | string; d: number | string; a: number | string }
   home_odds?: number | string
   draw_odds?: number | string
@@ -39,6 +42,7 @@ export interface ClassicPrediction {
 }
 
 export interface AiPrediction {
+  status: 'success' | 'error'
   match_id: string
   home_team: string
   away_team: string

@@ -3,10 +3,16 @@
 策略：通过 FastAPI dependency_overrides 把数据库仓储替换为内存假实现，
 配置项（JWT/DB/Gemini）固定为测试值，保证测试不依赖真实数据库与外部 API。
 """
+from __future__ import annotations
+
+from datetime import date
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.core import deps
+from app.infrastructure.repositories import UserRepository
+from app.services.auth import verify_password
 from app.core.config import settings
 from app.core.security import create_token
 from app.main import app
@@ -19,7 +25,14 @@ def _fixed_settings(monkeypatch):
     monkeypatch.setattr(settings, 'db_host', 'localhost')
     monkeypatch.setattr(settings, 'db_user', 'test')
     monkeypatch.setattr(settings, 'db_pass', 'test')
-    monkeypatch.setattr(settings, 'gemini_api_key', '')
+    monkeypatch.setattr(settings, 'ai_mode', '')
+    monkeypatch.setattr(settings, 'ai_api_key', '')
+    monkeypatch.setattr(settings, 'ai_base_url', '')
+    monkeypatch.setattr(settings, 'ai_model', '')
+    def reject_external(*args, **kwargs):
+        raise AssertionError('测试禁止连接真实数据库或外部 API')
+    monkeypatch.setattr('psycopg2.connect', reject_external)
+    monkeypatch.setattr('requests.sessions.Session.request', reject_external)
 
 
 class FakeDb:
@@ -46,7 +59,7 @@ class FakeUserRepository:
             'user_type': user_type,
             'membership_expires': None,
             'daily_predictions_used': daily_used,
-            'last_prediction_date': None,
+            'last_prediction_date': date.today().isoformat(),
             'total_predictions': total,
             'is_active': True,
         }
@@ -63,22 +76,32 @@ class FakeUserRepository:
     def find_by_username(self, username: str) -> dict | None:
         return self.users.get(username)
 
-    def authenticate(self, username: str, password_hash: str) -> dict | None:
+    def authenticate(self, username: str, password: str) -> dict | None:
         user = self.users.get(username)
-        if user and user['password_hash'] == password_hash:
+        if user and verify_password(password, user['password_hash']):
             return user
         return None
 
-    def can_predict(self, user: dict) -> bool:
-        return user['user_type'] == 'premium' or user['daily_predictions_used'] < 3
+    remaining_predictions = UserRepository.remaining_predictions
+    can_predict = UserRepository.can_predict
 
-    def consume_prediction(self, user_id: int) -> dict | None:
+    def consume_prediction(self, user_id: int, amount: int = 1) -> dict | None:
         for user in self.users.values():
             if user['id'] == user_id:
-                user['daily_predictions_used'] += 1
-                user['total_predictions'] += 1
-                return user
+                remaining = self.remaining_predictions(user)
+                if remaining != -1 and remaining < amount:
+                    return None
+                user['daily_predictions_used'] += amount
+                user['total_predictions'] += amount
+                return dict(user)
         return None
+
+    def release_prediction(self, user_id: int, quota_date: str, amount: int = 1):
+        for user in self.users.values():
+            if user['id'] == user_id:
+                if user['last_prediction_date'] == quota_date:
+                    user['daily_predictions_used'] -= amount
+                user['total_predictions'] -= amount
 
 
 class FakePredictionRepository:

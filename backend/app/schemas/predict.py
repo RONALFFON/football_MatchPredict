@@ -16,7 +16,7 @@ class MatchInput(BaseModel):
 
 
 class MatchBatchRequest(BaseModel):
-    matches: list[MatchInput] = Field(min_length=1)
+    matches: list[MatchInput] = Field(min_length=1, max_length=20)
 
 
 class SavePredictionRequest(BaseModel):

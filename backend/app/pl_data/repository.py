@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 import psycopg2
 import psycopg2.extras
 
@@ -98,22 +100,27 @@ def get_team_stats(team: str) -> dict:
                  OR (away_team ILIKE %s AND away_score > home_score))) AS wins,
              COUNT(*) FILTER (WHERE status='FINISHED' AND home_score = away_score
                AND (home_team ILIKE %s OR away_team ILIKE %s)) AS draws,
-             COUNT(*) FILTER (WHERE status='FINISHED') AS played
-           FROM pl_analytics.pl_matches""",
-        tuple([f'%{team}%'] * 10))
+             COUNT(*) AS played
+           FROM pl_analytics.pl_matches
+           WHERE status = 'FINISHED' AND home_score IS NOT NULL AND away_score IS NOT NULL
+             AND (home_team ILIKE %s OR away_team ILIKE %s)
+             AND season = (SELECT MAX(season) FROM pl_analytics.pl_matches)""",
+        tuple([f'%{team}%'] * 12))
     if not rows or not rows[0].get('played'):
         raise ValueError(f'没有球队 {team} 的比赛数据')
     stats = rows[0]
     for k, v in list(stats.items()):
-        if v is not None and k != 'played' and isinstance(v, (int, float)):
+        if v is not None and k != 'played' and isinstance(v, (float, Decimal)):
             stats[k] = round(float(v), 2)
     return stats
 
 
 def get_standings() -> list[dict]:
     return query(
-        """SELECT team_name, position, played, won, drawn, lost, goals_for, goals_against, points
-           FROM pl_analytics.pl_standings ORDER BY position ASC""")
+        """SELECT season, team_name, position, played, won, drawn, lost, goals_for, goals_against, points
+           FROM pl_analytics.pl_standings
+           WHERE season = (SELECT MAX(season) FROM pl_analytics.pl_standings)
+           ORDER BY position ASC, team_name ASC""")
 
 
 def get_odds_history(match_uid: str) -> list[dict]:

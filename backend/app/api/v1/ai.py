@@ -4,9 +4,12 @@
 """
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.core.config import settings
+from app.core.deps import get_current_user, get_users
+from app.infrastructure.repositories import UserRepository
+from app.services.prediction import parse_odds
 from app.core.response import fail, ok
 from app.schemas.predict import MatchBatchRequest
 
@@ -39,15 +42,33 @@ def _get_predictor():
 
 
 @router.post('/predict')
-def ai_predict(payload: MatchBatchRequest):
+def ai_predict(payload: MatchBatchRequest, user=Depends(get_current_user),
+               users: UserRepository = Depends(get_users)):
+    if user is None:
+        return fail('请先登录再使用 AI 分析', code=401)
     predictor = _get_predictor()
     if predictor is None:
         return fail('AI服务未配置（请检查 AI_MODE、AI_BASE_URL 和 AI_API_KEY）', code=500)
-
+    matches = [match.model_dump(exclude_none=True) for match in payload.matches]
     try:
-        matches = [match.model_dump(exclude_none=True) for match in payload.matches]
-        results = predictor.analyze_matches(matches)  # ai_service 已返回结构化 dict 列表
-        return ok({'predictions': results, 'count': len(results)})
-    except Exception as e:  # pragma: no cover
-        logger.error(f'AI预测失败: {e}')
-        return fail(f'AI预测失败: {e}', code=500)
+        for match in matches:
+            match['home_odds'], match['draw_odds'], match['away_odds'] = parse_odds(match)
+    except ValueError as exc:
+        return fail(str(exc))
+
+    reserved = users.consume_prediction(user['id'], len(matches))
+    if reserved is None:
+        return fail('今日剩余次数不足，请减少比赛数量或升级会员', code=403)
+    failed = len(matches)
+    try:
+        results = predictor.analyze_matches(matches)
+        successful = sum(item.get('status') == 'success' for item in results)
+        failed = len(matches) - successful
+        return ok({'predictions': results, 'count': len(results),
+                   'success_count': successful, 'failed_count': failed})
+    except Exception:
+        logger.exception('AI预测失败')
+        return fail('AI预测失败，请稍后重试', code=500)
+    finally:
+        if failed:
+            users.release_prediction(user['id'], reserved['last_prediction_date'], failed)

@@ -24,7 +24,8 @@ def stub_agent(monkeypatch):
         yield from state['events']
 
     monkeypatch.setattr(agent_pl, 'run_agent', fake_run_agent)
-    monkeypatch.setattr(agent_pl, 'GeminiClient', lambda api_key, model: object())
+    monkeypatch.setattr(agent_pl, 'OpenAICompatibleClient',
+                        lambda *args, **kwargs: type('FakeLlm', (), {'available': True})())
     return state
 
 

@@ -66,8 +66,7 @@ class FootballAiPredictor:
         for match in matches:
             try:
                 item = self._analyze_single(match)
-                if item:
-                    results.append(item)
+                results.append(item or self._error_item(match, '模型未返回有效分析，请稍后重试'))
             except Exception as e:
                 logger.error(f"分析比赛失败 {match.get('home_team', '')} vs "
                              f"{match.get('away_team', '')}: {e}")
@@ -102,6 +101,7 @@ class FootballAiPredictor:
             'home_team': home_team,
             'away_team': away_team,
             'league_name': league_name,
+            'status': 'success',
             'ai_analysis': text,
             'odds': {'home': home_odds, 'draw': draw_odds, 'away': away_odds},
         }
@@ -113,8 +113,12 @@ class FootballAiPredictor:
             'home_team': match.get('home_team', '未知'),
             'away_team': match.get('away_team', '未知'),
             'league_name': match.get('league_name', '未知联赛'),
+            'status': 'error',
             'ai_analysis': f'AI分析暂时无法获取，请稍后重试。\n\n错误信息：{error_msg}',
-            'odds': {'home': 2.0, 'draw': 3.2, 'away': 2.8},
+            'odds': {
+                key: match.get(f'{key}_odds', ((match.get('odds') or {}).get('hhad') or {}).get(short))
+                for key, short in [('home', 'h'), ('draw', 'd'), ('away', 'a')]
+            },
         }
 
     def _call_with_retry(self, prompt: str) -> Optional[str]:

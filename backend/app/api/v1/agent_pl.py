@@ -4,6 +4,7 @@ AI 实现已抽离至独立能力层 ai_service；本路由负责：
 登录/配额校验 → 组装 LLM 客户端与数据适配器 → 转发事件流。
 """
 import json
+from typing import Literal
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -20,13 +21,13 @@ router = APIRouter(prefix='/api/v1/pl/agent', tags=['英超专项-AI Agent'])
 
 
 class ChatMessage(BaseModel):
-    role: str  # user / assistant
-    text: str
+    role: Literal['user', 'assistant']
+    text: str = Field(min_length=1, max_length=12000)
 
 
 class ChatRequest(BaseModel):
-    message: str
-    history: list[ChatMessage] = Field(default_factory=list)
+    message: str = Field(min_length=1, max_length=4000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
 
 
 @router.post('/chat')
@@ -45,17 +46,26 @@ def pl_agent_chat(payload: ChatRequest,
         settings.ai_client_base_url,
         mode=settings.ai_mode,
     )
+    if not llm.available:
+        return fail('AI服务未配置', code=503)
     provider = RepositoryDataProvider()
 
     def event_stream():
+        reserved = users.consume_prediction(user['id'])
+        if reserved is None:
+            yield 'data: ' + json.dumps({'type': 'error', 'message': '今日免费次数已用完'}, ensure_ascii=False) + '\n\n'
+            yield 'data: [DONE]\n\n'
+            return
         answered = False
-        for event in run_agent(payload.message, history, llm=llm, provider=provider):
-            if event['type'] == 'text_delta':
-                answered = True
-            yield f'data: {json.dumps(event, ensure_ascii=False)}\n\n'
-        # 有有效回答才扣配额
-        if answered:
-            users.consume_prediction(user['id'])
+        try:
+            for event in run_agent(payload.message, history, llm=llm, provider=provider):
+                if event['type'] == 'text_delta' and event.get('text'):
+                    answered = True
+                yield f'data: {json.dumps(event, ensure_ascii=False)}\n\n'
+        finally:
+            # 已输出有效内容计一次；失败或提前断开且尚未输出内容则释放。
+            if not answered:
+                users.release_prediction(user['id'], reserved['last_prediction_date'])
         yield 'data: [DONE]\n\n'
 
     return StreamingResponse(event_stream(), media_type='text/event-stream',

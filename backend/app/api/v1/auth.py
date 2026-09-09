@@ -32,7 +32,7 @@ def login(payload: LoginRequest, db=Depends(get_db), users: UserRepository = Dep
     if not db.configured:
         return fail('登录失败：数据库服务不可用', code=500)
     try:
-        user = users.authenticate(payload.username.strip(), hash_password(payload.password))
+        user = users.authenticate(payload.username.strip(), payload.password)
         if not user:
             return fail('用户名或密码错误', code=401)
         token = create_token({'user_id': user['id'], 'username': user['username']})
@@ -53,10 +53,10 @@ def me(user=Depends(get_current_user)):
 def can_predict(user=Depends(get_current_user), users: UserRepository = Depends(get_users)):
     if user is None:
         return fail('未登录', code=401)
-    remaining = -1
+    remaining = users.remaining_predictions(user)
     return ok({
         'can_predict': users.can_predict(user),
-        'user_type': user['user_type'],
+        'user_type': user_payload(user)['user_type'],
         'daily_used': user['daily_predictions_used'],
         'remaining': remaining,
     })

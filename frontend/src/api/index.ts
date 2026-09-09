@@ -73,7 +73,7 @@ export async function* chatAgent(
       'Content-Type': 'application/json',
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
     },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history: history.slice(-20) }),
   })
 
   const contentType = resp.headers.get('content-type') || ''

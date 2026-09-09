@@ -42,9 +42,12 @@ async function batchPredict() {
       picked.map((m) => ({
         home_team: m.home_team,
         away_team: m.away_team,
-        home_odds: m.odds?.home_odds || m.home_odds || 2.0,
-        draw_odds: m.odds?.draw_odds || m.draw_odds || 3.2,
-        away_odds: m.odds?.away_odds || m.away_odds || 2.8,
+        match_id: m.match_id,
+        league_name: m.league_name,
+        odds: m.odds,
+        home_odds: m.home_odds,
+        draw_odds: m.draw_odds,
+        away_odds: m.away_odds,
       })),
     ),
   )

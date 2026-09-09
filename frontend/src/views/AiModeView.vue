@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import * as api from '@/api'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { useRequest } from '@/composables/useRequest'
 import type { AiPrediction, MatchInput } from '@/api/types'
 
 const toast = useToastStore()
+const auth = useAuthStore()
 
 const form = ref({ home: '', away: '', league: '英超', h: '2.00', d: '3.20', a: '2.80' })
 const queue = ref<MatchInput[]>([])
@@ -16,6 +18,10 @@ const analyses = computed(() => aiReq.data.value?.predictions ?? [])
 function addMatch() {
   if (!form.value.home || !form.value.away) {
     toast.error('请填写主客队名称')
+    return
+  }
+  if (queue.value.length >= 20) {
+    toast.error('每批最多分析 20 场比赛')
     return
   }
   queue.value.push({
@@ -33,6 +39,10 @@ function removeMatch(i: number) {
 }
 
 async function runAi() {
+  if (!auth.isLoggedIn) {
+    auth.openModal('login')
+    return
+  }
   if (!queue.value.length) {
     toast.error('请先添加比赛')
     return

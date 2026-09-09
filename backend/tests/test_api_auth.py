@@ -1,8 +1,10 @@
 """用户认证接口测试：注册 / 登录 / me / can-predict。"""
+import hashlib
+
 import jwt
 
 from app.core.config import settings
-from app.services.auth import hash_password
+from app.services.auth import hash_password, verify_password
 from conftest import auth_header
 
 
@@ -17,7 +19,8 @@ def test_register_success(client, fake_users):
     assert body['message'] == '注册成功，请登录'
     assert 'tester' in fake_users.users
     # 密码以哈希存储，不落明文
-    assert fake_users.users['tester']['password_hash'] == hash_password('secret123')
+    assert verify_password('secret123', fake_users.users['tester']['password_hash'])
+    assert fake_users.users['tester']['password_hash'].startswith('pbkdf2_sha256$')
 
 
 def test_register_duplicate_username_conflict(client, fake_users):
@@ -120,3 +123,23 @@ def test_can_predict_premium_unlimited(client, fake_users):
     body = client.get('/api/v1/auth/can-predict', headers=auth_header('tester')).json()
     assert body['data']['can_predict'] is True
     assert body['data']['remaining'] == -1
+
+
+def test_password_salts_and_legacy_compatibility():
+    first = hash_password('中文密码123')
+    second = hash_password('中文密码123')
+    assert first != second
+    assert verify_password('中文密码123', first)
+    assert not verify_password('错误密码', first)
+    legacy = hashlib.sha256('旧密码123'.encode('utf-8')).hexdigest()
+    assert verify_password('旧密码123', legacy)
+    assert not verify_password('错误密码', legacy)
+    assert not verify_password('任意密码', 'pbkdf2_sha256$bad$value$hash')
+
+
+def test_expired_membership_uses_free_quota(client, fake_users):
+    user = fake_users.add('tester', user_type='premium', daily_used=3)
+    user['membership_expires'] = '2020-01-01T00:00:00'
+    body = client.get('/api/v1/auth/can-predict', headers=auth_header('tester')).json()
+    assert body['data']['remaining'] == 0
+    assert body['data']['can_predict'] is False

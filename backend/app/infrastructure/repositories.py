@@ -10,12 +10,15 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 from app.infrastructure.database import Database
+from app.services.auth import hash_password, verify_password, is_premium
+
+FREE_DAILY_LIMIT = 3
 
 
 USER_FIELDS = """
     id, username, email, user_type, membership_expires,
-    CASE WHEN last_prediction_date < CURRENT_DATE
-         THEN 0 ELSE daily_predictions_used END AS daily_predictions_used,
+    CASE WHEN last_prediction_date IS NULL OR last_prediction_date < CURRENT_DATE
+         THEN 0 ELSE COALESCE(daily_predictions_used, 0) END AS daily_predictions_used,
     last_prediction_date, total_predictions
 """
 
@@ -32,19 +35,21 @@ def _json_row(row: dict) -> dict:
     return {key: _json_value(value) for key, value in dict(row).items()}
 
 
-def _consume_prediction_cursor(cursor, user_id: int) -> dict | None:
+def _consume_prediction_cursor(cursor, user_id: int, amount: int = 1) -> dict | None:
     cursor.execute(
         """UPDATE users
            SET daily_predictions_used = CASE
-                 WHEN last_prediction_date < CURRENT_DATE THEN 1
-                 ELSE daily_predictions_used + 1 END,
-               total_predictions = total_predictions + 1,
+                 WHEN last_prediction_date IS NULL OR last_prediction_date < CURRENT_DATE THEN %s
+                 ELSE COALESCE(daily_predictions_used, 0) + %s END,
+               total_predictions = COALESCE(total_predictions, 0) + %s,
                last_prediction_date = CURRENT_DATE
          WHERE id = %s AND is_active = TRUE
-           AND (user_type = 'premium'
-                OR last_prediction_date < CURRENT_DATE)
+           AND ((user_type = 'premium'
+                 AND (membership_expires IS NULL OR membership_expires > CURRENT_TIMESTAMP))
+                OR (CASE WHEN last_prediction_date IS NULL OR last_prediction_date < CURRENT_DATE
+                         THEN 0 ELSE COALESCE(daily_predictions_used, 0) END) + %s <= %s)
      RETURNING """ + USER_FIELDS,
-        (user_id,),
+        (amount, amount, amount, user_id, amount, FREE_DAILY_LIMIT),
     )
     row = cursor.fetchone()
     return _json_row(row) if row else None
@@ -75,17 +80,22 @@ class UserRepository:
             row = cursor.fetchone()
             return _json_row(row) if row else None
 
-    def authenticate(self, username: str, password_hash: str) -> dict | None:
+    def authenticate(self, username: str, password: str) -> dict | None:
         with self.db.connection() as conn, conn.cursor(cursor_factory=RealDictCursor) as cursor:
             cursor.execute(
                 f"""SELECT {USER_FIELDS}, password_hash
                     FROM users
-                    WHERE username = %s AND password_hash = %s AND is_active = TRUE""",
-                (username, password_hash),
+                    WHERE username = %s AND is_active = TRUE""",
+                (username,),
             )
             row = cursor.fetchone()
-            if not row:
+            if not row or not verify_password(password, row['password_hash']):
                 return None
+            if not row['password_hash'].startswith('pbkdf2_sha256$'):
+                cursor.execute(
+                    'UPDATE users SET password_hash = %s WHERE id = %s AND password_hash = %s',
+                    (hash_password(password), row['id'], row['password_hash']),
+                )
 
             cursor.execute(
                 "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s",
@@ -95,13 +105,34 @@ class UserRepository:
             result.pop('password_hash', None)
             return _json_row(result)
 
-    def can_predict(self, user: dict) -> bool:
-        return True
+    def remaining_predictions(self, user: dict) -> int:
+        if is_premium(user):
+            return -1
+        return max(0, FREE_DAILY_LIMIT - (user.get('daily_predictions_used') or 0))
 
-    def consume_prediction(self, user_id: int) -> dict | None:
+    def can_predict(self, user: dict) -> bool:
+        return self.remaining_predictions(user) != 0
+
+    def consume_prediction(self, user_id: int, amount: int = 1) -> dict | None:
         """原子扣减配额，避免检查和扣减之间产生竞态。"""
+        if amount < 1:
+            raise ValueError('预测次数必须为正数')
         with self.db.connection() as conn, conn.cursor(cursor_factory=RealDictCursor) as cursor:
-            return _consume_prediction_cursor(cursor, user_id)
+            return _consume_prediction_cursor(cursor, user_id, amount)
+
+    def release_prediction(self, user_id: int, quota_date: str, amount: int = 1) -> None:
+        """释放失败调用预占的次数；跨日时不扣减新一天的用量。"""
+        if amount < 1:
+            return
+        with self.db.connection() as conn, conn.cursor() as cursor:
+            cursor.execute(
+                """UPDATE users SET daily_predictions_used = CASE
+                     WHEN last_prediction_date = %s THEN GREATEST(0, daily_predictions_used - %s)
+                     ELSE daily_predictions_used END,
+                   total_predictions = GREATEST(0, total_predictions - %s)
+                   WHERE id = %s""",
+                (quota_date, amount, amount, user_id),
+            )
 
 
 class PredictionRepository:
