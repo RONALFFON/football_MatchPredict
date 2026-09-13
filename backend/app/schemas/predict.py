@@ -1,5 +1,6 @@
 """预测接口数据模型。"""
 from typing import Any, Dict, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
 
@@ -20,6 +21,8 @@ class MatchBatchRequest(BaseModel):
 
 
 class SavePredictionRequest(BaseModel):
+    request_id: Optional[UUID] = None
+    save_receipt: Optional[str] = Field(default=None, max_length=100000)
     mode: str = ''
     match_data: Dict[str, Any] = Field(default_factory=dict)
     prediction_result: str = ''

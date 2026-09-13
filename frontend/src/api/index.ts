@@ -1,5 +1,9 @@
 import { http, unwrap, getToken } from './client'
 import type {
+  AccountData,
+  AdminOverview,
+  MembershipChange,
+  MembershipEvent,
   AgentEvent,
   AiPrediction,
   ClassicPrediction,
@@ -38,8 +42,10 @@ export const aiPredict = (matches: MatchInput[]) =>
 
 export const savePrediction = (payload: {
   mode: string
-  match_data: Record<string, unknown>
-  prediction_result: string
+  match_data?: Record<string, unknown>
+  request_id?: string
+  save_receipt?: string
+  prediction_result?: string
   confidence?: number
   ai_analysis?: string
 }) => http.post('/api/v1/save-prediction', payload).then(unwrap<{ user: UserInfo }>)
@@ -110,3 +116,17 @@ export async function* chatAgent(
     }
   }
 }
+
+export const getAccount = (offset = 0) =>
+  http.get('/api/v1/account', { params: { offset } }).then(unwrap<AccountData>)
+
+export const updateMembership = (username: string, payload: MembershipChange) =>
+  http.post(`/api/v1/admin/memberships/${encodeURIComponent(username)}`, payload).then(unwrap)
+
+export const getMembershipHistory = (username: string) =>
+  http.get(`/api/v1/admin/memberships/${encodeURIComponent(username)}/history`).then(
+    unwrap<{ events: MembershipEvent[] }>,
+  )
+
+export const getAdminOverview = () =>
+  http.get('/api/v1/admin/overview').then(unwrap<AdminOverview>)

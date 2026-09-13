@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.v1 import agent_pl, ai, auth, lottery, pl_data, predict, teams  # noqa: E402
+from app.api.v1 import agent_pl, ai, auth, lottery, membership, pl_data, predict, teams  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.core.response import ok  # noqa: E402
 from app.infrastructure.database import database  # noqa: E402
@@ -42,3 +42,5 @@ app.include_router(ai.router)
 app.include_router(auth.router)
 app.include_router(pl_data.router)
 app.include_router(agent_pl.router)
+
+app.include_router(membership.router)

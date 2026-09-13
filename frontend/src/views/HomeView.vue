@@ -18,6 +18,7 @@ const homeTeam = ref('')
 const awayTeam = ref('')
 const odds = ref({ home: 2.0, draw: 3.2, away: 2.8 })
 const saving = ref(false)
+const saveRequestId = ref('')
 
 const leagues = computed(() => meta.data.value?.leagues ?? {})
 const teams = computed(() => meta.data.value?.teams ?? {})
@@ -54,6 +55,7 @@ async function runPredict() {
   }
   resultLeague.value = leagues.value[league.value] || league.value
   resultOdds.value = { ...odds.value }
+  saveRequestId.value = crypto.randomUUID()
   await predict.execute(() =>
     api.simplePredict([{
       home_team: homeTeam.value,
@@ -71,6 +73,7 @@ async function saveResult() {
   try {
     await api.savePrediction({
       mode: 'classic',
+      request_id: saveRequestId.value,
       match_data: {
         home_team: result.value.home_team,
         away_team: result.value.away_team,
@@ -78,7 +81,7 @@ async function saveResult() {
         ...resultOdds.value,
       },
       prediction_result: result.value.recommendation,
-      confidence: Math.round(result.value.probabilities.home * 100) / 10,
+      confidence: Math.round(Math.max(...Object.values(result.value.probabilities)) * 100) / 10,
     })
     toast.success('预测已保存')
     await auth.fetchMe()
@@ -118,7 +121,7 @@ async function saveResult() {
           <button class="btn primary predict-button" :disabled="!homeTeam || !awayTeam || predict.loading.value" type="submit"><span v-if="predict.loading.value" class="spinner" />{{ predict.loading.value ? '正在计算概率…' : '开始分析比赛' }}<span v-if="!predict.loading.value" aria-hidden="true">→</span></button>
         </fieldset>
       </form>
-      <div class="model-note"><span class="live-dot" /> 泊松分布模型 <span>·</span> 历史数据与赔率分析</div>
+      <div class="model-note"><span class="live-dot" /> 赔率隐含概率 <span>·</span> 经典计算与保存免费</div>
     </div>
     <div class="card result-card" :aria-busy="predict.loading.value" aria-live="polite">
       <div class="section-heading"><div><span class="section-number">02</span><h2 class="card-title">比赛洞察</h2></div><span class="badge">{{ result ? '分析完成' : '概率分析' }}</span></div>

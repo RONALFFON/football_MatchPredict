@@ -1,5 +1,8 @@
 """应用配置。"""
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+from pydantic import field_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -23,6 +26,21 @@ class Settings(BaseSettings):
     jwt_secret: str = ''
     jwt_algorithm: str = 'HS256'
     jwt_expire_hours: int = 168
+
+    business_timezone: str = 'Asia/Shanghai'
+    system_admin_email: str = 'admin@matchpredict.example'
+    admin_user_ids: str = ''
+
+    @field_validator('business_timezone')
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        ZoneInfo(value)
+        return value
+
+    @field_validator('system_admin_email')
+    @classmethod
+    def normalize_system_admin_email(cls, value: str) -> str:
+        return value.strip().casefold()
 
     cors_origins: str = 'http://localhost:3000'
 

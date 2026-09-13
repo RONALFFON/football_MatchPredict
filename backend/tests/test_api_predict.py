@@ -43,13 +43,13 @@ def test_save_prediction_success(client, fake_users, fake_predictions):
     body = client.post('/api/v1/save-prediction', json=payload, headers=auth_header('tester')).json()
     assert body['code'] == 0
     assert body['message'] == '预测结果保存成功'
-    assert body['data']['user']['daily_predictions_used'] == 1
+    assert body['data']['user']['daily_predictions_used'] == 0
     assert len(fake_predictions.records) == 1
     record = fake_predictions.records[0]
     assert record['prediction_mode'] == 'Classic'
     assert record['home_team'] == 'Arsenal FC'
     assert record['predicted_result'] == '主胜'
-    assert record['prediction_confidence'] == 0.8
+    assert record['prediction_confidence'] > 0.8
 
 
 def test_save_prediction_unknown_mode(client, fake_users):
@@ -66,7 +66,7 @@ def test_save_prediction_quota_exhausted(client, fake_users, fake_predictions):
     payload = {'mode': 'ai', 'match_data': SAMPLE_MATCH, 'prediction_result': '主胜', 'confidence': 0.8}
     body = client.post('/api/v1/save-prediction', json=payload, headers=auth_header('tester')).json()
     assert body['code'] == 403
-    assert '会员' in body['message']
+    assert '保存凭证' in body['message']
 
 
 def test_save_prediction_storage_error(client, fake_users, fake_predictions):

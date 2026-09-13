@@ -1,5 +1,9 @@
 import axios from 'axios'
 
+export class ApiError extends Error {
+  constructor(message: string, public code: number) { super(message) }
+}
+
 const TOKEN_KEY = 'mp_token'
 
 export function getToken(): string {
@@ -27,7 +31,11 @@ http.interceptors.response.use(
   (resp) => {
     const body = resp.data
     if (body && typeof body === 'object' && 'code' in body && body.code !== 0) {
-      return Promise.reject(new Error(body.message || '请求失败'))
+      if (body.code === 401 && getToken()) {
+        setToken('')
+        window.dispatchEvent(new CustomEvent('auth:unauthorized'))
+      }
+      return Promise.reject(new ApiError(body.message || '请求失败', body.code))
     }
     return resp
   },
@@ -38,7 +46,7 @@ http.interceptors.response.use(
       setToken('')
       window.dispatchEvent(new CustomEvent('auth:unauthorized'))
     }
-    return Promise.reject(new Error(message || error.message || '网络错误'))
+    return Promise.reject(new ApiError(message || error.message || '网络错误', error.response?.status || 0))
   },
 )
 

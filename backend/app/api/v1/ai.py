@@ -8,7 +8,8 @@ from fastapi import APIRouter, Depends
 
 from app.core.config import settings
 from app.core.deps import get_current_user, get_users
-from app.infrastructure.repositories import UserRepository
+from app.infrastructure.repositories import UserRepository, prediction_record
+from app.core.security import create_token
 from app.services.prediction import parse_odds
 from app.core.response import fail, ok
 from app.schemas.predict import MatchBatchRequest
@@ -64,9 +65,17 @@ def ai_predict(payload: MatchBatchRequest, user=Depends(get_current_user),
         results = predictor.analyze_matches(matches)
         successful = sum(item.get('status') == 'success' for item in results)
         failed = len(matches) - successful
+        for match, item in zip(matches, results):
+            if item.get('status') == 'success':
+                record = prediction_record(mode='ai', match_data=match, prediction_result='AI分析',
+                                           confidence=None, user=user, user_ip='',
+                                           ai_analysis=item.get('ai_analysis', ''))
+                item['save_receipt'] = create_token({'purpose': 'prediction_save',
+                                                     'user_id': user['id'], 'record': record})
         return ok({'predictions': results, 'count': len(results),
                    'success_count': successful, 'failed_count': failed})
     except Exception:
+        failed = len(matches)
         logger.exception('AI预测失败')
         return fail('AI预测失败，请稍后重试', code=500)
     finally:

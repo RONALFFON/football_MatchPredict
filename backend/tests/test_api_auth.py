@@ -31,6 +31,14 @@ def test_register_duplicate_username_conflict(client, fake_users):
     assert '已存在' in body['message']
 
 
+def test_public_registration_cannot_claim_system_admin_email(client, fake_users):
+    payload = {**REGISTER_PAYLOAD, 'email': 'ADMIN@MATCHPREDICT.EXAMPLE'}
+    body = client.post('/api/v1/auth/register', json=payload).json()
+    assert body['code'] == 403
+    assert '系统管理员' in body['message']
+    assert 'tester' not in fake_users.users
+
+
 def test_register_invalid_email_rejected(client):
     payload = {**REGISTER_PAYLOAD, 'email': 'not-an-email'}
     assert client.post('/api/v1/auth/register', json=payload).status_code == 422

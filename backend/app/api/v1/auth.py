@@ -4,6 +4,7 @@ import logging
 from fastapi import APIRouter, Depends
 
 from app.core.deps import get_current_user, get_db, get_users
+from app.core.config import settings
 from app.core.response import fail, ok
 from app.core.security import create_token
 from app.infrastructure.repositories import UserRepository
@@ -19,8 +20,11 @@ logger = logging.getLogger(__name__)
 def register(payload: RegisterRequest, db=Depends(get_db), users: UserRepository = Depends(get_users)):
     if not db.configured:
         return fail('注册失败：数据库服务不可用', code=500)
+    email = str(payload.email).strip().casefold()
+    if settings.system_admin_email and email == settings.system_admin_email.strip().casefold():
+        return fail('该邮箱为系统管理员保留邮箱，不能通过公开注册创建', code=403)
     try:
-        created = users.create(payload.username.strip(), str(payload.email), hash_password(payload.password))
+        created = users.create(payload.username.strip(), email, hash_password(payload.password))
         return ok(message='注册成功，请登录') if created else fail('注册失败：用户名或邮箱已存在', code=409)
     except Exception:
         logger.exception('用户注册失败')
@@ -35,7 +39,7 @@ def login(payload: LoginRequest, db=Depends(get_db), users: UserRepository = Dep
         user = users.authenticate(payload.username.strip(), payload.password)
         if not user:
             return fail('用户名或密码错误', code=401)
-        token = create_token({'user_id': user['id'], 'username': user['username']})
+        token = create_token({'purpose': 'access', 'user_id': user['id'], 'username': user['username']})
         return ok({'token': token, 'user': user_payload(user)}, '登录成功')
     except RuntimeError as exc:
         return fail(str(exc), code=500)

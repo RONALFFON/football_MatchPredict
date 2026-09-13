@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import * as api from '@/api'
-import { setToken } from '@/api/client'
+import { setToken, getToken, ApiError } from '@/api/client'
 import type { UserInfo } from '@/api/types'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -22,11 +22,12 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function fetchMe() {
+    const token = getToken()
     try {
       const data = await api.getMe()
-      user.value = data.user
-    } catch {
-      logout()
+      if (getToken() === token) user.value = data.user
+    } catch (error) {
+      if (getToken() === token && error instanceof ApiError && error.code === 401) logout()
     }
   }
 

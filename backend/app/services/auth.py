@@ -1,5 +1,5 @@
 """认证相关的纯业务逻辑。"""
-from datetime import datetime
+from app.services.membership import is_premium, entitlement_payload
 
 import hashlib
 import hmac
@@ -33,19 +33,6 @@ def verify_password(password: str, encoded: str) -> bool:
         return False
 
 
-def is_premium(user: dict) -> bool:
-    if user.get('user_type') != 'premium':
-        return False
-    expires = user.get('membership_expires')
-    if not expires:
-        return True  # 兼容已有长期会员。
-    try:
-        expiry = datetime.fromisoformat(str(expires).replace('Z', '+00:00'))
-    except ValueError:
-        return False
-    return expiry > datetime.now(expiry.tzinfo)
-
-
 def user_payload(user: dict) -> dict:
     return {
         'username': user['username'],
@@ -53,5 +40,5 @@ def user_payload(user: dict) -> dict:
         'user_type': 'premium' if is_premium(user) else 'free',
         'daily_predictions_used': user['daily_predictions_used'],
         'total_predictions': user['total_predictions'],
-        'membership_expires': user.get('membership_expires'),
+        **entitlement_payload(user),
     }

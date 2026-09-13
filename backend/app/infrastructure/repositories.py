@@ -12,11 +12,12 @@ from psycopg2.extras import RealDictCursor
 from app.infrastructure.database import Database
 from app.services.auth import hash_password, verify_password, is_premium
 
-FREE_DAILY_LIMIT = 3
+from app.services.membership import FREE_DAILY_LIMIT, expiry_time
 
 
 USER_FIELDS = """
     id, username, email, user_type, membership_expires,
+    to_jsonb(users)->>'membership_state' AS membership_state,
     CASE WHEN last_prediction_date IS NULL OR last_prediction_date < CURRENT_DATE
          THEN 0 ELSE COALESCE(daily_predictions_used, 0) END AS daily_predictions_used,
     last_prediction_date, total_predictions
@@ -24,7 +25,9 @@ USER_FIELDS = """
 
 
 def _json_value(value: Any) -> Any:
-    if isinstance(value, (datetime, date)):
+    if isinstance(value, datetime):
+        return expiry_time(value).isoformat()
+    if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
@@ -45,7 +48,8 @@ def _consume_prediction_cursor(cursor, user_id: int, amount: int = 1) -> dict | 
                last_prediction_date = CURRENT_DATE
          WHERE id = %s AND is_active = TRUE
            AND ((user_type = 'premium'
-                 AND (membership_expires IS NULL OR membership_expires > CURRENT_TIMESTAMP))
+                 AND (membership_expires IS NULL OR membership_expires > CURRENT_TIMESTAMP)
+                 AND COALESCE(to_jsonb(users)->>'membership_state', 'active') = 'active')
                 OR (CASE WHEN last_prediction_date IS NULL OR last_prediction_date < CURRENT_DATE
                          THEN 0 ELSE COALESCE(daily_predictions_used, 0) END) + %s <= %s)
      RETURNING """ + USER_FIELDS,
@@ -139,13 +143,21 @@ class PredictionRepository:
     def __init__(self, db: Database):
         self.db = db
 
-    def save_with_quota(self, data: dict) -> dict:
-        with self.db.connection() as conn, conn.cursor(cursor_factory=RealDictCursor) as cursor:
+    def save(self, data: dict) -> None:
+        """保存不扣 AI 次数；prediction_id 冲突时保留第一次写入。"""
+        with self.db.connection() as conn, conn.cursor() as cursor:
             self._insert(cursor, data)
-            updated = _consume_prediction_cursor(cursor, data['user_id'])
-            if updated is None:
-                raise PermissionError('今日免费预测次数已用完，请升级会员')
-            return updated
+
+    def list_for_user(self, user_id: int, limit: int = 20, offset: int = 0) -> list[dict]:
+        with self.db.connection() as conn, conn.cursor(cursor_factory=RealDictCursor) as cursor:
+            cursor.execute(
+                """SELECT prediction_id, prediction_mode, home_team, away_team,
+                          predicted_result, prediction_confidence, created_at
+                     FROM match_predictions WHERE user_id = %s
+                     ORDER BY created_at DESC, prediction_id DESC LIMIT %s OFFSET %s""",
+                (user_id, limit, offset),
+            )
+            return [_json_row(row) for row in cursor.fetchall()]
 
     @staticmethod
     def _insert(cursor, data: dict) -> None:
@@ -160,11 +172,7 @@ class PredictionRepository:
                 %(home_team)s, %(away_team)s, %(league_name)s, %(match_time)s,
                 %(home_odds)s, %(draw_odds)s, %(away_odds)s, %(predicted_result)s,
                 %(prediction_confidence)s, %(ai_analysis)s, %(user_ip)s
-            ) ON CONFLICT (prediction_id) DO UPDATE SET
-                predicted_result = EXCLUDED.predicted_result,
-                prediction_confidence = EXCLUDED.prediction_confidence,
-                ai_analysis = EXCLUDED.ai_analysis,
-                updated_at = CURRENT_TIMESTAMP""",
+            ) ON CONFLICT (prediction_id) DO NOTHING""",
             data,
         )
 

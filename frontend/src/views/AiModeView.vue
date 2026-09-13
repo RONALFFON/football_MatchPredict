@@ -13,6 +13,8 @@ const form = ref({ home: '', away: '', league: '英超', h: '2.00', d: '3.20', a
 const queue = ref<MatchInput[]>([])
 
 const aiReq = useRequest<{ predictions: AiPrediction[]; count: number }>()
+const savingIds = ref(new Set<string>())
+const savedIds = ref(new Set<string>())
 const analyses = computed(() => aiReq.data.value?.predictions ?? [])
 
 function addMatch() {
@@ -52,6 +54,20 @@ async function runAi() {
     return
   }
   await aiReq.execute(() => api.aiPredict(queue.value))
+  await auth.fetchMe()
+}
+async function saveAnalysis(item: AiPrediction) {
+  if (!item.save_receipt || savingIds.value.has(item.match_id) || savedIds.value.has(item.match_id)) return
+  savingIds.value.add(item.match_id)
+  try {
+    await api.savePrediction({ mode: 'ai', save_receipt: item.save_receipt })
+    savedIds.value.add(item.match_id)
+    toast.success('分析已保存，不额外消耗次数')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : '保存失败')
+  } finally {
+    savingIds.value.delete(item.match_id)
+  }
 }
 </script>
 
@@ -114,6 +130,9 @@ async function runAi() {
       <div v-for="a in analyses" :key="a.match_id" class="card analysis-card">
         <div class="card-title">{{ a.home_team }} vs {{ a.away_team }}（{{ a.league_name }}）</div>
         <div class="analysis-text">{{ a.ai_analysis }}</div>
+        <button v-if="a.save_receipt" class="btn ghost" :disabled="savingIds.has(a.match_id) || savedIds.has(a.match_id)" @click="saveAnalysis(a)">
+          {{ savedIds.has(a.match_id) ? '已保存' : savingIds.has(a.match_id) ? '保存中…' : '保存分析（不扣次数）' }}
+        </button>
       </div>
     </div>
   </div>

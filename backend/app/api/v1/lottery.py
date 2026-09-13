@@ -1,7 +1,7 @@
 """体彩比赛数据 API。"""
 from fastapi import APIRouter, Depends, Query
 
-from app.core.deps import get_db, get_lottery, get_lottery_provider
+from app.core.deps import get_db, get_lottery, get_lottery_provider, require_system_admin
 from app.core.response import fail, ok
 from app.infrastructure.providers.lottery import LotteryProvider
 from app.infrastructure.repositories import LotteryRepository
@@ -31,6 +31,7 @@ def get_lottery_matches(
 def refresh_lottery_data(
     days: int = Query(default=3, ge=1, le=7),
     provider: LotteryProvider = Depends(get_lottery_provider),
+    actor=Depends(require_system_admin),
 ):
     try:
         matches = provider.get_matches(days_ahead=days)

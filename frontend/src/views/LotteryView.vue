@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import * as api from '@/api'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { useRequest } from '@/composables/useRequest'
 import type { ClassicPrediction, LotteryMatch } from '@/api/types'
 
 const toast = useToastStore()
+const auth = useAuthStore()
 
 const days = ref(3)
 const selected = ref<Set<number>>(new Set())
@@ -74,7 +76,7 @@ onMounted(() => load())
         <option v-for="d in 7" :key="d" :value="d">{{ d }} 天</option>
       </select>
       <button class="btn primary" :disabled="matchReq.loading.value || predictReq.loading.value" @click="load(false)">加载赛程</button>
-      <button class="btn ghost" :disabled="matchReq.loading.value || predictReq.loading.value" @click="load(true)">实时刷新</button>
+      <button v-if="auth.user?.role === 'system_admin'" class="btn ghost" :disabled="matchReq.loading.value || predictReq.loading.value" @click="load(true)">实时刷新</button>
       <span v-if="source" class="text-dim toolbar-source">{{ matches.length }} 场比赛可供查看</span>
     </div>
   </div>

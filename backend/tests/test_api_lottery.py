@@ -1,4 +1,6 @@
 """体彩比赛数据接口测试：/lottery/matches、/lottery/refresh。"""
+from app.core.config import settings
+from conftest import auth_header
 SAMPLE_LOTTERY_MATCH = {
     'match_id': '20260825001',
     'home_team': '阿森纳',
@@ -55,16 +57,26 @@ def test_lottery_matches_query_error(client, fake_lottery):
     assert '数据库查询失败' in body['message']
 
 
-def test_lottery_refresh_success(client, fake_lottery_provider):
+def test_lottery_refresh_success(client, fake_lottery_provider, fake_users):
+    fake_users.add('admin', email=settings.system_admin_email)
     fake_lottery_provider.matches = [SAMPLE_LOTTERY_MATCH]
-    body = client.post('/api/v1/lottery/refresh').json()
+    body = client.post('/api/v1/lottery/refresh', headers=auth_header('admin')).json()
     assert body['code'] == 0
     assert body['message'] == '刷新成功'
     assert body['data']['count'] == 1
 
 
-def test_lottery_refresh_provider_error(client, fake_lottery_provider):
+def test_lottery_refresh_provider_error(client, fake_lottery_provider, fake_users):
+    fake_users.add('admin', email=settings.system_admin_email)
     fake_lottery_provider.error = True
-    body = client.post('/api/v1/lottery/refresh').json()
+    body = client.post('/api/v1/lottery/refresh', headers=auth_header('admin')).json()
     assert body['code'] == 500
     assert '刷新数据失败' in body['message']
+
+
+def test_lottery_refresh_is_system_admin_only(client, fake_lottery_provider, fake_users):
+    fake_users.add('tester')
+    assert client.post('/api/v1/lottery/refresh').status_code == 401
+    response = client.post('/api/v1/lottery/refresh', headers=auth_header('tester'))
+    assert response.status_code == 403
+    assert fake_lottery_provider.matches == []

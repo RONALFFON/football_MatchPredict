@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from app.core import deps
 from app.infrastructure.repositories import UserRepository
 from app.services.auth import verify_password
+from app.services.membership import business_now
 from app.core.config import settings
 from app.core.security import create_token
 from app.main import app
@@ -25,6 +26,9 @@ def _fixed_settings(monkeypatch):
     monkeypatch.setattr(settings, 'db_host', 'localhost')
     monkeypatch.setattr(settings, 'db_user', 'test')
     monkeypatch.setattr(settings, 'db_pass', 'test')
+    monkeypatch.setattr(settings, 'admin_user_ids', '')
+    monkeypatch.setattr(settings, 'system_admin_email', 'admin@matchpredict.example')
+    monkeypatch.setattr(settings, 'business_timezone', 'Asia/Shanghai')
     monkeypatch.setattr(settings, 'ai_mode', '')
     monkeypatch.setattr(settings, 'ai_api_key', '')
     monkeypatch.setattr(settings, 'ai_base_url', '')
@@ -59,7 +63,7 @@ class FakeUserRepository:
             'user_type': user_type,
             'membership_expires': None,
             'daily_predictions_used': daily_used,
-            'last_prediction_date': date.today().isoformat(),
+            'last_prediction_date': business_now().date().isoformat(),
             'total_predictions': total,
             'is_active': True,
         }
@@ -113,16 +117,14 @@ class FakePredictionRepository:
         self.records: list[dict] = []
         self.fail_mode = fail_mode
 
-    def save_with_quota(self, data: dict) -> dict:
-        if self.fail_mode == 'permission':
-            raise PermissionError('今日免费预测次数已用完，请升级会员')
+    def save(self, data: dict) -> None:
         if self.fail_mode == 'error':
             raise RuntimeError('模拟保存失败')
-        self.records.append(data)
-        updated = self.users.consume_prediction(data['user_id']) if self.users else None
-        if updated is None:
-            raise PermissionError('今日免费预测次数已用完，请升级会员')
-        return updated
+        if not any(row['prediction_id'] == data['prediction_id'] for row in self.records):
+            self.records.append(data)
+
+    def list_for_user(self, user_id: int, limit=20, offset=0):
+        return [row for row in self.records if row['user_id'] == user_id][offset:offset + limit]
 
     def stats(self) -> dict:
         return {'mode_stats': [], 'recent_predictions': []}

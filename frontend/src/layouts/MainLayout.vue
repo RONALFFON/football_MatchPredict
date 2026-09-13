@@ -24,6 +24,7 @@ const links = computed(() => isPremier.value ? [
 ])
 watch(() => route.fullPath, () => { mobileMenuOpen.value = false })
 function onUnauthorized() {
+  auth.logout()
   toast.error('登录已过期，请重新登录')
   auth.openModal('login')
 }
@@ -55,8 +56,9 @@ onUnmounted(() => {
       </nav>
       <div class="nav-user">
         <template v-if="auth.isLoggedIn && auth.user">
-          <span class="user-name">{{ auth.user.username }}</span>
-          <span class="badge" :class="{ premium: auth.user.user_type === 'premium' }">{{ auth.user.user_type === 'premium' ? '会员' : '免费' }}</span>
+          <router-link class="user-name" to="/account">{{ auth.user.username }} · 个人中心</router-link>
+          <router-link v-if="auth.user.role === 'system_admin'" class="btn ghost sm" to="/admin">系统管理</router-link>
+          <span class="badge" :class="{ premium: auth.user.user_type === 'premium' || auth.user.role === 'system_admin' }">{{ auth.user.role === 'system_admin' ? '系统管理员' : auth.user.user_type === 'premium' ? '会员' : '免费' }}</span>
           <button class="btn ghost sm" @click="auth.logout()">退出</button>
         </template>
         <template v-else>

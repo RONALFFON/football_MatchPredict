@@ -23,6 +23,7 @@ class Database:
             'user': settings.db_user,
             'password': settings.db_pass,
             'sslmode': settings.db_sslmode,
+            'options': f'-c timezone={settings.business_timezone}',
         }
 
     @contextmanager
